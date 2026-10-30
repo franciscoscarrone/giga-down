@@ -68,6 +68,19 @@ describe("normalizeTikwmVideo", () => {
     ]);
   });
 
+  it("no ofrece HD si es el mismo archivo que la estándar servido desde otro host", () => {
+    // Caso real: play y hdplay con URLs distintas pero idénticos (mismo tamaño, 576p H.264).
+    const { variants } = normalizeTikwmVideo(
+      video({
+        hdplay: "https://v16-notes.tiktokcdn-us.com/otro.mp4",
+        size: 2_651_213,
+        hd_size: 2_651_213,
+      }),
+      SOURCE,
+    );
+    expect(variants.map((v) => v.id)).toEqual(["sd"]);
+  });
+
   it("no ofrece la variante con marca si tikwm repite el link sin marca", () => {
     expect(fixture.data.wmplay).toBe(fixture.data.play);
     const { variants } = normalizeTikwmVideo(video(), SOURCE);

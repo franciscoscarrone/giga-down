@@ -78,6 +78,9 @@ export function normalizeTikwmVideo(video: TikwmVideo, sourceUrl: string): Media
   const standard = absolutize(video.play);
   const hd = absolutize(video.hdplay);
   const watermarked = absolutize(video.wmplay);
+  // Si el video no tiene versión HD, tikwm manda en `hdplay` el mismo archivo que en `play`
+  // desde otro host: mismo tamaño en bytes = misma calidad, así que no lo ofrecemos dos veces.
+  const hdIsSameFile = positive(video.hd_size) !== undefined && video.hd_size === video.size;
   const variants: MediaVariant[] = [];
 
   if (standard) {
@@ -90,7 +93,7 @@ export function normalizeTikwmVideo(video: TikwmVideo, sourceUrl: string): Media
       mimeType: "video/mp4",
     });
   }
-  if (hd && hd !== standard) {
+  if (hd && hd !== standard && !hdIsSameFile) {
     variants.push({
       id: "hd",
       quality: "hd",
