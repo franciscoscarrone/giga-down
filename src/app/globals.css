@@ -1,26 +1,135 @@
 @import "tailwindcss";
 
+/*
+ * Tokens de GigaDown. Identidad: tinta cálida + verde lima eléctrico como único acento.
+ * En claro el botón principal es tinta (el lima sobre blanco no tiene contraste de borde);
+ * en oscuro el botón principal es lima con texto tinta.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: oklch(0.982 0.004 106);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.955 0.006 106);
+  --fg: oklch(0.19 0.012 106);
+  --muted: oklch(0.47 0.012 106);
+  --border: oklch(0.89 0.008 106);
+  --border-strong: oklch(0.78 0.01 106);
+  --accent: oklch(0.9 0.2 124);
+  --accent-fg: oklch(0.19 0.012 106);
+  --accent-soft: oklch(0.95 0.08 124);
+  --primary: oklch(0.19 0.012 106);
+  --primary-fg: oklch(0.985 0.004 106);
+  --primary-hover: oklch(0.29 0.012 106);
+  --ring: oklch(0.19 0.012 106);
+  --danger: oklch(0.52 0.19 27);
+  --danger-soft: oklch(0.96 0.03 27);
+  --success: oklch(0.5 0.14 150);
+  --shadow: 0 1px 2px oklch(0.19 0.012 106 / 0.06), 0 8px 24px -12px oklch(0.19 0.012 106 / 0.18);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: oklch(0.155 0.006 106);
+    --surface: oklch(0.195 0.007 106);
+    --surface-2: oklch(0.235 0.008 106);
+    --fg: oklch(0.96 0.006 106);
+    --muted: oklch(0.73 0.01 106);
+    --border: oklch(0.29 0.008 106);
+    --border-strong: oklch(0.4 0.01 106);
+    --accent: oklch(0.9 0.2 124);
+    --accent-fg: oklch(0.17 0.012 106);
+    --accent-soft: oklch(0.3 0.07 124);
+    --primary: oklch(0.9 0.2 124);
+    --primary-fg: oklch(0.17 0.012 106);
+    --primary-hover: oklch(0.94 0.17 124);
+    --ring: oklch(0.9 0.2 124);
+    --danger: oklch(0.72 0.16 27);
+    --danger-soft: oklch(0.27 0.05 27);
+    --success: oklch(0.78 0.15 150);
+    --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -16px oklch(0 0 0 / 0.6);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --shadow-card: var(--shadow);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-bricolage), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --radius-card: 1.25rem;
+  --radius-control: 0.875rem;
+  --animate-rise: rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

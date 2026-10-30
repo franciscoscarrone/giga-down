@@ -1,7 +1,8 @@
+import { GigaDownApp } from "@/components/gigadown-app";
+import { getServerEnv } from "@/lib/env";
+
 export default function Home() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-xl items-center px-4">
-      <h1 className="text-3xl font-semibold">GigaDown</h1>
-    </main>
-  );
+  // Se evalúa al generar la página: cambiar ACCESS_KEY en Vercel requiere un redeploy.
+  const authRequired = Boolean(getServerEnv().accessKey);
+  return <GigaDownApp authRequired={authRequired} />;
 }
