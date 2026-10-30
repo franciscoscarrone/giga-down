@@ -19,7 +19,7 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  * la siguiente dentro de la misma instancia. Sirve para respetar límites del tipo
  * "1 pedido por segundo" sin reintentos agresivos.
  */
-export function createThrottle(minIntervalMs: number, now: () => number = Date.now) {
+export function createThrottle(minIntervalMs: number, now: () => number = () => Date.now()) {
   let nextSlot = 0;
 
   return async function waitTurn(signal?: AbortSignal): Promise<void> {

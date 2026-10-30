@@ -10,6 +10,14 @@ export const platforms: readonly Platform[] = [tiktok];
 
 export const registry = createRegistry(platforms, {
   onProviderError: ({ platform, provider, error }) => {
-    console.warn(`[resolve] ${platform}/${provider} falló: ${error.code} — ${error.message}`);
+    // `fetch failed` esconde el motivo real (DNS, TLS, conexión) en `cause.cause`.
+    const reasons: string[] = [];
+    for (let c = error.cause; c instanceof Error && reasons.length < 3; c = c.cause) {
+      reasons.push(c.message);
+    }
+    const cause = reasons.length ? ` (causa: ${reasons.join(" ← ")})` : "";
+    console.warn(
+      `[resolve] ${platform}/${provider} falló: ${error.code} — ${error.message}${cause}`,
+    );
   },
 });
