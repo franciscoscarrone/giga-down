@@ -87,7 +87,8 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
     if (!shared) return;
     window.history.replaceState(null, "", window.location.pathname);
     queueMicrotask(() => {
-      setInput(shared);
+      // En el campo mostramos solo el link, no todo el texto que mandó la app.
+      setInput(registry.match(shared)?.url.href ?? shared);
       void resolve(shared);
     });
   }, [hydrated, locked, resolve]);
