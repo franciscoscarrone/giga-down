@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { AppError } from "@/core/errors";
 import { resolveRequestSchema } from "@/lib/api-contract";
 import { errorResponse, okResponse } from "@/lib/api-response";
@@ -28,6 +29,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     return okResponse(media);
   } catch (error) {
+    unstable_rethrow(error); // deja pasar las señales internas de Next (p. ej. prerender)
     return errorResponse(error);
   }
 }

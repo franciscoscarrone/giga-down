@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { AuthStatus } from "@/lib/api-contract";
 import { errorResponse, okResponse } from "@/lib/api-response";
 import { assertAuthorized } from "@/lib/auth";
@@ -14,6 +15,7 @@ export async function GET(request: Request): Promise<Response> {
     assertAuthorized(request, accessKey);
     return okResponse<AuthStatus>({ required: Boolean(accessKey) });
   } catch (error) {
+    unstable_rethrow(error); // deja pasar las señales internas de Next (p. ej. prerender)
     return errorResponse(error);
   }
 }
