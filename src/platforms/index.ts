@@ -1,12 +1,22 @@
 import { createRegistry } from "@/core/registry";
 import type { Platform } from "@/core/types";
 import { tiktok } from "./tiktok";
+import { x } from "./x";
 
 /**
  * Plataformas habilitadas. Para sumar una red nueva: crear `platforms/<red>/`
  * (detect + provider + index) y agregarla a esta lista. Nada más.
  */
-export const platforms: readonly Platform[] = [tiktok];
+export const platforms: readonly Platform[] = [tiktok, x];
+
+/** "TikTok y X" o "TikTok o X", para los textos de la UI. */
+export function platformNames(type: "conjunction" | "disjunction"): string {
+  return new Intl.ListFormat("es", { type }).format(platforms.map((p) => p.name));
+}
+
+export function platformById(id: string): Platform | undefined {
+  return platforms.find((p) => p.id === id);
+}
 
 export const registry = createRegistry(platforms, {
   onProviderError: ({ platform, provider, error }) => {

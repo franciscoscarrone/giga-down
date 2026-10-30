@@ -10,27 +10,32 @@ const result = (provider: string): MediaResult => ({
   sourceUrl: "https://fake.example/v/123",
   author: { username: "alguien" },
   title: "Un video",
-  variants: [
+  items: [
     {
-      id: "hd",
-      quality: "hd",
-      watermark: false,
-      url: "https://cdn.example/hd.mp4",
-      mimeType: "video/mp4",
-    },
-    {
-      id: "wm",
-      quality: "sd",
-      watermark: true,
-      url: "https://cdn.example/wm.mp4",
-      mimeType: "video/mp4",
-    },
-    {
-      id: "sd",
-      quality: "sd",
-      watermark: false,
-      url: "https://cdn.example/sd.mp4",
-      mimeType: "video/mp4",
+      id: "123",
+      variants: [
+        {
+          id: "hd",
+          quality: "hd",
+          watermark: false,
+          url: "https://cdn.example/hd.mp4",
+          mimeType: "video/mp4",
+        },
+        {
+          id: "wm",
+          quality: "sd",
+          watermark: true,
+          url: "https://cdn.example/wm.mp4",
+          mimeType: "video/mp4",
+        },
+        {
+          id: "sd",
+          quality: "sd",
+          watermark: false,
+          url: "https://cdn.example/sd.mp4",
+          mimeType: "video/mp4",
+        },
+      ],
     },
   ],
 });
@@ -46,6 +51,8 @@ const failing = (id: string, error: unknown): Provider => ({
 const platformWith = (...providers: Provider[]): Platform => ({
   id: "fake",
   name: "Fake",
+  watermarked: false,
+  defaultQuality: "sd",
   detect: (url) => url.hostname === "fake.example",
   providers,
 });
@@ -121,6 +128,16 @@ describe("registry.resolve", () => {
     });
   });
 
+  it("si un proveedor vio el post sin video, eso le gana a NOT_FOUND", async () => {
+    const registry = createRegistry([
+      platformWith(failing("a", new AppError("NOT_FOUND")), failing("b", new AppError("NO_VIDEO"))),
+    ]);
+
+    await expect(registry.resolve("https://fake.example/v/123")).rejects.toMatchObject({
+      code: "NO_VIDEO",
+    });
+  });
+
   it("convierte errores desconocidos en PROVIDER_ERROR", async () => {
     const registry = createRegistry([platformWith(failing("a", new TypeError("fetch failed")))]);
     await expect(registry.resolve("https://fake.example/v/123")).rejects.toMatchObject({
@@ -154,10 +171,10 @@ describe("registry.resolve", () => {
     expect(seen?.aborted).toBe(true);
   });
 
-  it("ordena las variantes: sin marca primero y de menor a mayor calidad", async () => {
+  it("ordena las variantes de cada video: sin marca primero y de menor a mayor calidad", async () => {
     const registry = createRegistry([platformWith(ok("a"))]);
     const media = await registry.resolve("https://fake.example/v/123");
-    expect(media.variants.map((v) => v.id)).toEqual(["sd", "hd", "wm"]);
+    expect(media.items[0]?.variants.map((v) => v.id)).toEqual(["sd", "hd", "wm"]);
   });
 
   it("lanza PROVIDER_ERROR si la plataforma no tiene proveedores", async () => {

@@ -41,6 +41,22 @@ export const mediaAuthorSchema = z.object({
 });
 export type MediaAuthor = z.infer<typeof mediaAuthorSchema>;
 
+/** Un video del post. TikTok tiene siempre uno; un post de X puede tener hasta cuatro. */
+export const mediaItemSchema = z.object({
+  /** Único dentro del resultado (id del video en la plataforma). */
+  id: z.string().min(1),
+  /** Texto corto para distinguirlo en el selector (p. ej. "GIF" o "De @usuario"). */
+  label: z.string().min(1).optional(),
+  coverUrl: z.url().optional(),
+  durationSeconds: z.number().nonnegative().optional(),
+  /** Tamaño del video original en píxeles: la portada se dibuja con su proporción. */
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  /** Ordenadas de menor a mayor calidad; las variantes con marca de agua van al final. */
+  variants: z.array(mediaVariantSchema).min(1),
+});
+export type MediaItem = z.infer<typeof mediaItemSchema>;
+
 export const mediaResultSchema = z.object({
   platform: z.string().min(1),
   /** Proveedor que resolvió el pedido (útil para depurar el fallback). */
@@ -51,12 +67,16 @@ export const mediaResultSchema = z.object({
   sourceUrl: z.url(),
   author: mediaAuthorSchema,
   title: z.string(),
-  coverUrl: z.url().optional(),
-  durationSeconds: z.number().nonnegative().optional(),
-  /** Ordenadas de menor a mayor calidad; las variantes con marca de agua van al final. */
-  variants: z.array(mediaVariantSchema).min(1),
+  items: z.array(mediaItemSchema).min(1),
+  /** Índice del video que pide el link (p. ej. x.com/…/video/2). Sin él, el primero. */
+  selectedIndex: z.number().int().nonnegative().optional(),
 });
 export type MediaResult = z.infer<typeof mediaResultSchema>;
+
+/** El video que pide el link, o el primero si el índice no existe. */
+export function selectedItem(media: MediaResult): MediaItem {
+  return media.items[media.selectedIndex ?? 0] ?? media.items[0]!;
+}
 
 /** Contexto que el registry le pasa a cada proveedor. */
 export interface ProviderContext {
@@ -72,6 +92,10 @@ export interface Provider {
 export interface Platform {
   id: PlatformId;
   name: string;
+  /** ¿La plataforma le pone marca de agua a sus videos? Cambia los textos de la descarga. */
+  watermarked: boolean;
+  /** Calidad que se preselecciona hasta que el usuario elige otra (o la más cercana). */
+  defaultQuality: Quality;
   /** ¿Esta URL es de la plataforma? Debe ser pura y sin red: también corre en el navegador. */
   detect(url: URL): boolean;
   /** Proveedores en orden de preferencia. El registry prueba el siguiente si uno falla. */

@@ -1,9 +1,9 @@
-import { qualityRank, type MediaResult, type MediaVariant } from "@/core/types";
+import { qualityRank, type MediaItem, type MediaResult, type MediaVariant } from "@/core/types";
 
 /**
  * Descarga directa desde el CDN al dispositivo: el video nunca pasa por nuestro servidor.
  *
- * 1. `fetch` del link a un Blob (los CDN de TikTok responden con CORS abierto).
+ * 1. `fetch` del link a un Blob (los CDN de TikTok y de X responden con CORS abierto).
  * 2. Si la calidad elegida falla, se prueba con las otras sin marca de agua.
  * 3. Si ninguna se puede bajar por CORS o red, el llamador abre el link en otra pestaña.
  */
@@ -30,11 +30,14 @@ export function downloadOrder(
   return selected ? [selected, ...others] : others;
 }
 
-export function buildFilename(media: MediaResult, variant: MediaVariant): string {
+export function buildFilename(media: MediaResult, item: MediaItem, variant: MediaVariant): string {
+  // En un post con varios videos, el número distingue cada archivo.
+  const position = media.items.length > 1 ? media.items.indexOf(item) + 1 : 0;
   const parts = [
     media.platform,
     media.author.username,
     media.id,
+    position ? String(position) : undefined,
     variant.quality,
     variant.watermark ? "marca" : undefined,
   ];
@@ -93,10 +96,11 @@ export type DownloadOutcome =
 /** Baja la variante elegida o, si falla, otra calidad. Lanza DownloadError si todas fallan por HTTP. */
 export async function downloadMedia(
   media: MediaResult,
+  item: MediaItem,
   selectedId: string,
   options: { signal?: AbortSignal; onProgress?: (fraction: number | undefined) => void } = {},
 ): Promise<DownloadOutcome> {
-  const order = downloadOrder(media.variants, selectedId);
+  const order = downloadOrder(item.variants, selectedId);
   const first = order[0];
   if (!first) throw new DownloadError("http", 404);
 
@@ -107,7 +111,7 @@ export async function downloadMedia(
     try {
       options.onProgress?.(0);
       const blob = await fetchBlob(variant.url, options);
-      const file = new File([blob], buildFilename(media, variant), {
+      const file = new File([blob], buildFilename(media, item, variant), {
         type: blob.type || variant.mimeType,
       });
       return { kind: "file", file, variant, fellBack: variant.id !== first.id };

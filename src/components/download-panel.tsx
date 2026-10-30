@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import type { MediaResult, MediaVariant } from "@/core/types";
+import type { MediaItem, MediaResult, MediaVariant, Platform } from "@/core/types";
 import { usePersistentStore } from "@/hooks/use-client-state";
 import { detectOS, type DeviceOS } from "@/lib/client/device";
 import { canShareFile, DownloadError, downloadMedia, saveFile } from "@/lib/client/download";
@@ -35,18 +35,29 @@ const HELP: Record<DeviceOS, string> = {
 
 interface DownloadPanelProps {
   media: MediaResult;
+  /** El video del post que se va a bajar. */
+  item: MediaItem;
+  platform: Platform | undefined;
   onNotice(message: string): void;
   onRefresh(): void;
 }
 
-export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps) {
+/** Texto del botón: "sin marca de agua" solo tiene sentido en las redes que la ponen. */
+function downloadLabel(media: MediaResult, item: MediaItem, platform: Platform | undefined) {
+  if (platform?.watermarked ?? true) return "Descargar sin marca de agua";
+  if (media.items.length > 1) return `Descargar video ${media.items.indexOf(item) + 1}`;
+  return "Descargar video";
+}
+
+export function DownloadPanel({ media, item, platform, onNotice, onRefresh }: DownloadPanelProps) {
   const os = useDeviceOS();
-  const preferred = usePersistentStore(qualityPreferenceStore);
-  const clean = media.variants.filter((v) => !v.watermark);
-  const watermarked = media.variants.find((v) => v.watermark);
+  const preferences = usePersistentStore(qualityPreferenceStore);
+  const target = preferences[media.platform] ?? platform?.defaultQuality ?? "sd";
+  const clean = item.variants.filter((v) => !v.watermark);
+  const watermarked = item.variants.find((v) => v.watermark);
   const [chosenId, setChosenId] = useState<string | null>(null);
   const selected =
-    clean.find((v) => v.id === chosenId) ?? pickDefaultVariant(media.variants, preferred);
+    clean.find((v) => v.id === chosenId) ?? pickDefaultVariant(item.variants, target);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const abortRef = useRef<AbortController | null>(null);
   const helpId = useId();
@@ -64,7 +75,7 @@ export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps
     setPhase({ kind: "downloading", progress: 0 });
 
     try {
-      const outcome = await downloadMedia(media, variant.id, {
+      const outcome = await downloadMedia(media, item, variant.id, {
         signal: controller.signal,
         onProgress: (progress) => setPhase({ kind: "downloading", progress }),
       });
@@ -107,12 +118,17 @@ export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps
 
   function choose(variant: MediaVariant) {
     setChosenId(variant.id);
-    qualityPreferenceStore.set(variant.quality);
+    qualityPreferenceStore.set({
+      ...qualityPreferenceStore.getSnapshot(),
+      [media.platform]: variant.quality,
+    });
     if (phase.kind !== "downloading") setPhase({ kind: "idle" });
   }
 
   const progress = phase.kind === "downloading" ? phase.progress : undefined;
   const percent = progress === undefined ? undefined : Math.round(progress * 100);
+  // Con cuatro calidades (pasa en X) queda mejor una grilla de 2×2 que una fila de 3 y 1.
+  const columns = clean.length === 4 ? 2 : Math.min(clean.length, 3);
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,7 +137,7 @@ export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps
           <legend className="mb-2 text-sm font-medium">Calidad</legend>
           <div
             className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${Math.min(clean.length, 3)}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >
             {clean.map((variant) => {
               const active = variant.id === selected.id;
@@ -136,7 +152,7 @@ export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps
                 >
                   <input
                     type="radio"
-                    name={`quality-${media.id}`}
+                    name={`quality-${media.id}-${item.id}`}
                     value={variant.id}
                     checked={active}
                     onChange={() => choose(variant)}
@@ -192,7 +208,7 @@ export function DownloadPanel({ media, onNotice, onRefresh }: DownloadPanelProps
           ) : (
             <>
               <DownloadIcon className="size-5" />
-              Descargar sin marca de agua
+              {downloadLabel(media, item, platform)}
             </>
           )}
         </button>

@@ -1,10 +1,11 @@
 import type { ClientError } from "@/lib/client/api";
 import { ERROR_COPY } from "@/lib/client/messages";
+import { platformNames } from "@/platforms";
 import { AlertIcon, RetryIcon } from "./icons";
 
 const STEPS = [
-  ["Copiá el link", "En TikTok: Compartir → Copiar enlace."],
-  ["Pegalo acá", "Con el botón Pegar se busca solo."],
+  ["Copiá el link", `En ${platformNames("disjunction")}: Compartir → Copiar enlace.`],
+  ["Pegalo acá", "La red se detecta sola y con el botón Pegar se busca solo."],
   ["Descargá", "Sin marca de agua, directo a tu dispositivo."],
 ] as const;
 

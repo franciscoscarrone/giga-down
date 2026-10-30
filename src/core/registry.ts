@@ -38,9 +38,11 @@ export const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * Si todos los proveedores fallan, se informa el error más útil para el usuario:
- * un "no existe" definitivo le gana a un problema transitorio.
+ * "no tiene video" (alguien vio el post) le gana a "no existe", y cualquier respuesta
+ * definitiva le gana a un problema transitorio.
  */
 const ERROR_PRIORITY: readonly ErrorCode[] = [
+  "NO_VIDEO",
   "NOT_FOUND",
   "UNSUPPORTED_URL",
   "RATE_LIMITED",
@@ -88,7 +90,11 @@ async function runProvider(
         cause: parsed.error,
       });
     }
-    return { ...parsed.data, variants: sortVariants(parsed.data.variants) };
+    const items = parsed.data.items.map((item) => ({
+      ...item,
+      variants: sortVariants(item.variants),
+    }));
+    return { ...parsed.data, items };
   } finally {
     clearTimeout(timer);
     parent?.removeEventListener("abort", onParentAbort);

@@ -7,7 +7,7 @@ import { useHydrated, useNow, usePersistentStore } from "@/hooks/use-client-stat
 import { resolveMedia, type ClientError } from "@/lib/client/api";
 import { addToHistory, historyStore } from "@/lib/client/history";
 import { accessKeyStore } from "@/lib/client/preferences";
-import { registry } from "@/platforms";
+import { platformNames, registry } from "@/platforms";
 import { AccessGate } from "./access-gate";
 import { HistoryList } from "./history-list";
 import { LockIcon } from "./icons";
@@ -163,7 +163,7 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
                   </span>
                 </h1>
                 <p className="mt-5 max-w-md text-lg text-muted">
-                  Videos de TikTok{" "}
+                  Videos de {platformNames("conjunction")}{" "}
                   <mark className="rounded-md bg-accent px-1.5 text-accent-fg">
                     sin marca de agua
                   </mark>

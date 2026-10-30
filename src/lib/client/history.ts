@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MediaResult } from "@/core/types";
+import { selectedItem, type MediaResult } from "@/core/types";
 import { createPersistentStore } from "./persistent-store";
 
 export const HISTORY_KEY = "gigadown:history:v1";
@@ -42,14 +42,15 @@ export function addToHistory(
   media: MediaResult,
   now: number = Date.now(),
 ): HistoryEntry[] {
+  const item = selectedItem(media);
   const entry: HistoryEntry = {
     platform: media.platform,
     id: media.id,
     sourceUrl: media.sourceUrl,
     author: media.author.username,
     title: media.title,
-    coverUrl: media.coverUrl,
-    durationSeconds: media.durationSeconds,
+    coverUrl: item.coverUrl,
+    durationSeconds: item.durationSeconds,
     savedAt: now,
   };
   const rest = entries.filter((e) => !(e.platform === entry.platform && e.id === entry.id));

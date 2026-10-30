@@ -10,13 +10,18 @@ const media = (id: string): MediaResult => ({
   sourceUrl: `https://www.tiktok.com/@a/video/${id}`,
   author: { username: "a" },
   title: `Video ${id}`,
-  variants: [
+  items: [
     {
-      id: "sd",
-      quality: "sd",
-      watermark: false,
-      url: "https://cdn.example/a.mp4",
-      mimeType: "video/mp4",
+      id,
+      variants: [
+        {
+          id: "sd",
+          quality: "sd",
+          watermark: false,
+          url: "https://cdn.example/a.mp4",
+          mimeType: "video/mp4",
+        },
+      ],
     },
   ],
 });
@@ -33,6 +38,22 @@ describe("addToHistory", () => {
       coverUrl: undefined,
       durationSeconds: undefined,
       savedAt: 1_000,
+    });
+  });
+
+  it("usa la portada y la duración del video que pide el link", () => {
+    const base = media("1");
+    const post: MediaResult = {
+      ...base,
+      items: [
+        { ...base.items[0]!, coverUrl: "https://cdn.example/1.jpg", durationSeconds: 4 },
+        { ...base.items[0]!, id: "2", coverUrl: "https://cdn.example/2.jpg", durationSeconds: 9 },
+      ],
+      selectedIndex: 1,
+    };
+    expect(addToHistory([], post)[0]).toMatchObject({
+      coverUrl: "https://cdn.example/2.jpg",
+      durationSeconds: 9,
     });
   });
 

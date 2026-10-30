@@ -7,6 +7,7 @@ import { z } from "zod";
 export const ERROR_CODES = [
   "UNSUPPORTED_URL",
   "NOT_FOUND",
+  "NO_VIDEO",
   "PROVIDER_ERROR",
   "RATE_LIMITED",
   "UNAUTHORIZED",
@@ -21,6 +22,7 @@ export type ErrorCode = z.infer<typeof errorCodeSchema>;
 export const HTTP_STATUS_BY_CODE: Record<ErrorCode, number> = {
   UNSUPPORTED_URL: 422,
   NOT_FOUND: 404,
+  NO_VIDEO: 422,
   PROVIDER_ERROR: 502,
   RATE_LIMITED: 429,
   UNAUTHORIZED: 401,
@@ -32,6 +34,7 @@ export const HTTP_STATUS_BY_CODE: Record<ErrorCode, number> = {
 const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   UNSUPPORTED_URL: "El link no corresponde a ninguna plataforma soportada.",
   NOT_FOUND: "No se encontró el contenido. Puede ser privado o haber sido borrado.",
+  NO_VIDEO: "La publicación no tiene videos.",
   PROVIDER_ERROR: "El proveedor respondió con un error.",
   RATE_LIMITED: "Demasiados pedidos seguidos. Esperá unos segundos.",
   UNAUTHORIZED: "Falta la clave de acceso o es incorrecta.",

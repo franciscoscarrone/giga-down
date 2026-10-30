@@ -4,6 +4,7 @@ import { mediaResultSchema } from "@/core/types";
 import { ACCESS_KEY_HEADER } from "@/lib/api-contract";
 import { registry } from "@/platforms";
 import fixture from "@/platforms/tiktok/providers/__fixtures__/tikwm-video.json";
+import fxFixture from "@/platforms/x/providers/__fixtures__/fxtwitter-multi.json";
 import { POST } from "./route";
 
 const TIKTOK_URL = "https://www.tiktok.com/@scout2015/video/6718335390845095173";
@@ -48,6 +49,30 @@ describe("POST /api/resolve", () => {
       id: "6718335390845095173",
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("https://www.tikwm.com/api/");
+  });
+
+  it("detecta un link de X y lo resuelve con su plataforma", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(fxFixture)));
+    // Los HEAD al CDN de X para conocer el tamaño de cada calidad.
+    fetchMock.mockImplementation(
+      async () => new Response(null, { headers: { "content-length": "1000000" } }),
+    );
+
+    const response = await post({
+      url: "https://x.com/UltimaShadowX/status/1577719286659006464/video/2?s=46",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mediaResultSchema.parse(body.data)).toMatchObject({
+      platform: "x",
+      provider: "fxtwitter",
+      id: "1577719286659006464",
+      selectedIndex: 1,
+    });
+    expect(body.data.items).toHaveLength(4);
+    expect(body.data.items[0].variants[0].size).toBe(1_000_000);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("https://api.fxtwitter.com/2/status/");
   });
 
   it("acepta el texto que comparte la app de TikTok", async () => {

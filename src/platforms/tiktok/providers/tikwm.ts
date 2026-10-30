@@ -69,10 +69,7 @@ export function errorFromTikwmMessage(message: string | undefined): AppError {
 /** Traduce la respuesta de tikwm al modelo de la app. */
 export function normalizeTikwmVideo(video: TikwmVideo, sourceUrl: string): MediaResult {
   if (video.images?.length) {
-    throw new AppError(
-      "UNSUPPORTED_URL",
-      "Las publicaciones de fotos todavía no están soportadas.",
-    );
+    throw new AppError("NO_VIDEO", "Las publicaciones de fotos todavía no están soportadas.");
   }
 
   const standard = absolutize(video.play);
@@ -130,9 +127,14 @@ export function normalizeTikwmVideo(video: TikwmVideo, sourceUrl: string): Media
       avatarUrl: absolutize(video.author.avatar),
     },
     title: video.title?.trim() ?? "",
-    coverUrl: absolutize(video.cover) ?? absolutize(video.origin_cover),
-    durationSeconds: positive(video.duration),
-    variants,
+    items: [
+      {
+        id: video.id,
+        coverUrl: absolutize(video.cover) ?? absolutize(video.origin_cover),
+        durationSeconds: positive(video.duration),
+        variants,
+      },
+    ],
   };
 }
 

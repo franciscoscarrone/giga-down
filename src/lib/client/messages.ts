@@ -11,13 +11,18 @@ export interface ErrorCopy {
 export const ERROR_COPY: Record<ClientErrorCode, ErrorCopy> = {
   UNSUPPORTED_URL: {
     title: "Ese link no es de un video soportado",
-    hint: "Por ahora funciona con videos de TikTok. En la app tocá Compartir → Copiar enlace.",
+    hint: "Funciona con videos de TikTok y de X. En la app tocá Compartir → Copiar enlace.",
     retry: false,
   },
   NOT_FOUND: {
     title: "No encontramos ese video",
     hint: "Puede ser privado, haber sido borrado o el link estar incompleto.",
     retry: true,
+  },
+  NO_VIDEO: {
+    title: "Esa publicación no tiene video",
+    hint: "Por ahora se bajan videos y GIFs: las fotos y los posts de solo texto no están soportados.",
+    retry: false,
   },
   PROVIDER_ERROR: {
     title: "El servicio de descarga falló",
@@ -26,7 +31,7 @@ export const ERROR_COPY: Record<ClientErrorCode, ErrorCopy> = {
   },
   RATE_LIMITED: {
     title: "Fueron muchos pedidos seguidos",
-    hint: "El proveedor gratuito acepta un pedido por segundo. Esperá un momento y reintentá.",
+    hint: "Los servicios gratuitos limitan los pedidos por segundo. Esperá un momento y reintentá.",
     retry: true,
   },
   UNAUTHORIZED: {

@@ -28,6 +28,9 @@ function setup(...responses: Array<Response | Error>) {
   return { fetchMock, resolve };
 }
 
+const variantsOf = (data: TikwmVideo, source: string) =>
+  normalizeTikwmVideo(data, source).items[0]!.variants;
+
 describe("normalizeTikwmVideo", () => {
   it("normaliza la respuesta real a un MediaResult válido", () => {
     const media = normalizeTikwmVideo(video(), SOURCE);
@@ -39,14 +42,18 @@ describe("normalizeTikwmVideo", () => {
       id: "6718335390845095173",
       sourceUrl: SOURCE,
       author: { username: "scout2015", displayName: "Scout, Suki & Stella" },
-      durationSeconds: 10,
     });
     expect(media.title).toContain("Scramble up ur name");
-    expect(media.coverUrl).toBe(fixture.data.cover);
+    expect(media.items).toHaveLength(1);
+    expect(media.items[0]).toMatchObject({
+      id: "6718335390845095173",
+      coverUrl: fixture.data.cover,
+      durationSeconds: 10,
+    });
   });
 
   it("arma las variantes sin marca, de menor a mayor calidad, con su tamaño", () => {
-    const { variants } = normalizeTikwmVideo(video(), SOURCE);
+    const variants = variantsOf(video(), SOURCE);
 
     expect(variants).toEqual([
       {
@@ -70,7 +77,7 @@ describe("normalizeTikwmVideo", () => {
 
   it("no ofrece HD si es el mismo archivo que la estándar servido desde otro host", () => {
     // Caso real: play y hdplay con URLs distintas pero idénticos (mismo tamaño, 576p H.264).
-    const { variants } = normalizeTikwmVideo(
+    const variants = variantsOf(
       video({
         hdplay: "https://v16-notes.tiktokcdn-us.com/otro.mp4",
         size: 2_651_213,
@@ -83,12 +90,12 @@ describe("normalizeTikwmVideo", () => {
 
   it("no ofrece la variante con marca si tikwm repite el link sin marca", () => {
     expect(fixture.data.wmplay).toBe(fixture.data.play);
-    const { variants } = normalizeTikwmVideo(video(), SOURCE);
+    const variants = variantsOf(video(), SOURCE);
     expect(variants.some((v) => v.watermark)).toBe(false);
   });
 
   it("incluye la variante con marca cuando es un link distinto", () => {
-    const { variants } = normalizeTikwmVideo(
+    const variants = variantsOf(
       video({ wmplay: "https://cdn.example/wm.mp4", wm_size: 3_100_000 }),
       SOURCE,
     );
@@ -106,15 +113,17 @@ describe("normalizeTikwmVideo", () => {
       SOURCE,
     );
 
-    expect(media.variants.map((v) => v.url)).toEqual([
+    expect(media.items[0]?.variants.map((v) => v.url)).toEqual([
       "https://www.tikwm.com/video/media/play/6718335390845095173.mp4",
       "https://www.tikwm.com/video/media/hdplay/6718335390845095173.mp4",
     ]);
-    expect(media.coverUrl).toBe("https://www.tikwm.com/video/cover/6718335390845095173.webp");
+    expect(media.items[0]?.coverUrl).toBe(
+      "https://www.tikwm.com/video/cover/6718335390845095173.webp",
+    );
   });
 
   it("omite tamaños en 0 y la variante HD si no viene", () => {
-    const { variants } = normalizeTikwmVideo(video({ size: 0, hdplay: undefined }), SOURCE);
+    const variants = variantsOf(video({ size: 0, hdplay: undefined }), SOURCE);
     expect(variants).toHaveLength(1);
     expect(variants[0]?.size).toBeUndefined();
   });
@@ -122,7 +131,7 @@ describe("normalizeTikwmVideo", () => {
   it("rechaza publicaciones de fotos", () => {
     expect(() =>
       normalizeTikwmVideo(video({ images: ["https://cdn.example/1.jpg"] }), SOURCE),
-    ).toThrow(expect.objectContaining({ code: "UNSUPPORTED_URL" }));
+    ).toThrow(expect.objectContaining({ code: "NO_VIDEO" }));
   });
 
   it("falla si no hay ningún link de video", () => {
