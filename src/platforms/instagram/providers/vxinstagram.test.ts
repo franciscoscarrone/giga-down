@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "@/core/errors";
 import { mediaResultSchema } from "@/core/types";
-import { createVxInstagramProvider, decodeEntities, VXINSTAGRAM_ORIGIN } from "./vxinstagram";
+import {
+  browserFriendlyUrl,
+  createVxInstagramProvider,
+  decodeEntities,
+  VXINSTAGRAM_ORIGIN,
+} from "./vxinstagram";
 
 /** Respuestas reales del servicio, recortadas; las URLs firmadas y los autores son de prueba. */
 const fixture = (name: string) =>
@@ -74,11 +79,25 @@ describe("vxinstagram: normalización", () => {
       displayName: "Autor De Prueba",
     });
     expect(media.items.map((item) => item.id)).toEqual(["DSzVXzKDy-M-1", "DSzVXzKDy-M-2"]);
+    // Vienen de instagram.*.fna.fbcdn.net: se entregan listos para bajar desde el navegador.
     expect(media.items.map((item) => item.variants[0]?.url)).toEqual([
-      expect.stringContaining("AQMuno.mp4"),
-      expect.stringContaining("AQMdos.mp4"),
+      "https://video.xx.fbcdn.net/o1/v/t2/f2/m367/AQMuno.mp4?_nc_cat=1&oe=6AEDBFD4",
+      "https://video.xx.fbcdn.net/o1/v/t2/f2/m367/AQMdos.mp4?_nc_cat=1&oe=6AEDBFD4",
     ]);
     expect(media.selectedIndex).toBeUndefined();
+  });
+
+  it("deja igual los links que ya se pueden bajar desde el navegador", () => {
+    const scontent = "https://scontent-ams4-1.cdninstagram.com/o1/a.mp4?_nc_cat=1&oe=6AEDBFD4";
+    expect(browserFriendlyUrl(scontent)).toBe(scontent);
+  });
+
+  it("al cambiar el host no toca la ruta ni la firma del link", () => {
+    const signed =
+      "https://instagram.fein1-2.fna.fbcdn.net/o1/v/t2/AQN_x-y.mp4?_nc_ht=instagram.fein1-2.fna.fbcdn.net&efg=eyJ2Ijoi%3D%3D&oh=00_AQSH&oe=6AEF4302";
+    expect(browserFriendlyUrl(signed)).toBe(
+      "https://video.xx.fbcdn.net/o1/v/t2/AQN_x-y.mp4?_nc_ht=instagram.fein1-2.fna.fbcdn.net&efg=eyJ2Ijoi%3D%3D&oh=00_AQSH&oe=6AEF4302",
+    );
   });
 
   it.each([

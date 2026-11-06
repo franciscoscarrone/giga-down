@@ -19,6 +19,8 @@ import { parseInstagramUrl, type InstagramRef } from "../detect";
  * - `/reels/` no existe en el servicio: hay que pedir `/reel/`.
  * - Si el primer medio de un álbum es una foto (o hay varios videos), las etiquetas Open Graph
  *   solo traen una imagen: hay que mirar el cuerpo para encontrar todos los videos.
+ * - Los links `instagram.*.fna.fbcdn.net` no se pueden bajar desde el navegador tal como vienen
+ *   (ver `browserFriendlyUrl`).
  * - Corre en el servidor de una persona y depende de Snapsave: es el punto débil de esta red.
  */
 
@@ -59,6 +61,19 @@ function isInstagramCdn(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * `instagram.*.fna.fbcdn.net` les responde a los navegadores con un redirect a video.xx.fbcdn.net
+ * sin cabecera CORS, así que el `fetch` de la descarga falla (a Node no se lo hace: no se ve desde
+ * el servidor). El mismo link pedido directo a ese host responde con CORS abierto. Los de
+ * `scontent-*.cdninstagram.com` no tienen el problema.
+ */
+export function browserFriendlyUrl(url: string): string {
+  const parsed = new URL(url);
+  if (!parsed.hostname.endsWith(".fna.fbcdn.net")) return url;
+  parsed.hostname = "video.xx.fbcdn.net";
+  return parsed.href;
 }
 
 export interface VxMedia {
@@ -106,7 +121,15 @@ export function normalizeVxPage(page: VxPage, ref: InstagramRef, sourceUrl: stri
       id: videos.length > 1 ? `${id}-${index + 1}` : id,
       width,
       height,
-      variants: [{ id: quality, quality, watermark: false, url: video.url, mimeType: "video/mp4" }],
+      variants: [
+        {
+          id: quality,
+          quality,
+          watermark: false,
+          url: browserFriendlyUrl(video.url),
+          mimeType: "video/mp4",
+        },
+      ],
     };
   });
 
