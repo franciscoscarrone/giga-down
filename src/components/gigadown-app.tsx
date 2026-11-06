@@ -13,7 +13,7 @@ import { HistoryList } from "./history-list";
 import { LockIcon } from "./icons";
 import { Wordmark } from "./logo";
 import { ResultCard } from "./result-card";
-import { ShortcutInstall } from "./shortcut-install";
+import { ShareSetup } from "./share-setup";
 import { EmptyState, ErrorPanel, ResultSkeleton } from "./states";
 import { Toast } from "./toast";
 import { UrlForm } from "./url-form";
@@ -227,7 +227,7 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
                 }}
                 onClear={() => historyStore.set([])}
               />
-              <ShortcutInstall />
+              <ShareSetup />
             </div>
           </div>
         )}

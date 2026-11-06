@@ -276,8 +276,12 @@ Para sumar **otro proveedor de TikTok** (por ejemplo, un proxy propio como respa
 
 ### Android: menú Compartir
 
-1. Abrí la app en **Chrome** → menú **⋮** → **Instalar app** (o _Agregar a la pantalla
-   principal_ → _Instalar_).
+En Android, la app muestra la sección **Agregá GigaDown a Compartir**:
+
+1. Abrí la app en **Chrome** y tocá **Instalar GigaDown**. Chrome habilita el botón recién después
+   de que tocaste la página y pasaste al menos 30 segundos en ella. Mientras tanto, o en otros
+   navegadores, usá el menú **⋮** → **Instalar app** (o _Agregar a la pantalla principal_ →
+   _Instalar_).
 2. En TikTok, en el video: **Compartir → Más** (o _Otras apps_) → **GigaDown**. En X, en el
    post: **Compartir** (la flecha) → la opción de compartir con otras apps → **GigaDown**.
 3. GigaDown se abre con el link y lo resuelve solo. Tocá **Descargar**: queda en Descargas y en
@@ -334,6 +338,12 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
   inesperado), además de `NETWORK_ERROR` solo en el cliente (sin conexión).
 - **tikwm siempre con `hd=1`**, para tener la versión estándar y la HD en una sola llamada. Si
   tikwm repite el link sin marca en `wmplay`, no se ofrece la variante "con marca".
+- **Botón de instalar en Android, con alternativa manual.** `beforeinstallprompt` solo existe en
+  Chromium y Chrome puede demorarlo, así que los pasos manuales se muestran hasta que llega. El
+  aviso se captura al cargar `src/lib/client/install-prompt.ts` y no en un componente: llega una
+  sola vez y puede llegar con la pantalla de la clave abierta. Si la app ya está instalada y se
+  abre en una pestaña de Chrome, siguen viéndose los pasos manuales: el navegador no avisa que ya
+  está instalada.
 - **Calidades:** se muestran todas las variantes sin marca, de menor a mayor. Por defecto se
   preselecciona **Estándar** (H.264: se reproduce en todos lados) y después se recuerda la última
   que elegiste. Si la descarga de la elegida falla, se prueba con las otras sin marca (de mayor a

@@ -29,6 +29,15 @@ export function useDeviceOS(): DeviceOS | null {
   );
 }
 
+/** `true` si la app corre instalada, fuera de una pestaña del navegador. */
+export function useIsStandalone(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => window.matchMedia("(display-mode: standalone)").matches,
+    () => false,
+  );
+}
+
 const MINUTE = 60_000;
 const subscribeMinute = (onChange: () => void) => {
   const timer = setInterval(onChange, MINUTE);
