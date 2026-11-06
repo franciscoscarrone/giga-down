@@ -1,16 +1,15 @@
 import { z } from "zod";
 import { AppError, toAppError } from "@/core/errors";
 import type { MediaItem, MediaResult, Provider } from "@/core/types";
-import { parseXStatusUrl } from "../detect";
 import {
-  itemLabel,
   positive,
   positiveInt,
   selectedVideoIndex,
-  twimgVariants,
   USER_AGENT,
   withSizes,
-} from "../media";
+} from "@/platforms/media";
+import { parseXStatusUrl } from "../detect";
+import { itemLabel, twimgVariants } from "../media";
 
 /**
  * Adaptador de la API pública de FxTwitter (https://docs.fxembed.com), open source.

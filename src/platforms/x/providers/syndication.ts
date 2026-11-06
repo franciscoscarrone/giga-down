@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { AppError, toAppError } from "@/core/errors";
 import type { MediaItem, MediaResult, Provider } from "@/core/types";
+import { selectedVideoIndex, USER_AGENT, withSizes } from "@/platforms/media";
 import { parseXStatusUrl } from "../detect";
-import { itemLabel, selectedVideoIndex, twimgVariants, USER_AGENT, withSizes } from "../media";
+import { itemLabel, twimgVariants } from "../media";
 
 /**
  * Adaptador del endpoint de embeds de X (el que usan los tweets incrustados en otras webs).
