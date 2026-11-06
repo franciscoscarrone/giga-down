@@ -17,7 +17,7 @@ export const ERROR_COPY: Record<ClientErrorCode, ErrorCopy> = {
   },
   NOT_FOUND: {
     title: "No encontramos ese video",
-    hint: "Puede ser privado, haber sido borrado o el link estar incompleto.",
+    hint: "Puede ser privado, tener restricción de edad, haber sido borrado o el link estar incompleto.",
     retry: true,
   },
   NO_VIDEO: {

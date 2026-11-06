@@ -1,8 +1,9 @@
 # GigaDown
 
 Descargador personal de videos sin marca de agua. Pegás (o compartís) el link de un video de
-**TikTok** o de un post de **X** (ex Twitter) y la app te devuelve el video listo para guardar en
-el celular o la compu. No hace falta decir de qué red es: se detecta por el link.
+**TikTok**, de un post de **X** (ex Twitter) o de un reel o video de **Instagram** y la app te
+devuelve el video listo para guardar en el celular o la compu. No hace falta decir de qué red es:
+se detecta por el link.
 
 > **Uso personal.** No se publica ni se promociona. Respetá los derechos de autor de lo que
 > descargás y los términos de cada plataforma.
@@ -14,14 +15,16 @@ el celular o la compu. No hace falta decir de qué red es: se detecta por el lin
 ## Cómo funciona
 
 1. La app manda el link a `POST /api/resolve` (una función de Vercel).
-2. El **registry** mira el link y elige la plataforma (TikTok o X). Esa plataforma le pregunta a
-   sus **proveedores** en orden hasta que uno responde:
+2. El **registry** mira el link y elige la plataforma (TikTok, X o Instagram). Esa plataforma le
+   pregunta a sus **proveedores** en orden hasta que uno responde:
    - **TikTok:** la API pública de [tikwm](https://www.tikwm.com).
    - **X:** la API pública de [FxTwitter](https://docs.fxembed.com) y, de respaldo, el endpoint
      de embeds de X (`cdn.syndication.twimg.com`).
+   - **Instagram:** la página de [vxinstagram](https://vxinstagram.com), sin respaldo.
 3. La respuesta se normaliza a un `MediaResult`: autor, título y uno o más **videos** (un post de
-   X puede tener hasta cuatro), cada uno con portada, duración, tamaño en píxeles y sus
-   **variantes** (calidad, con o sin marca, URL, peso).
+   X puede tener hasta cuatro y un álbum de Instagram, más), cada uno con portada, duración, tamaño
+   en píxeles y sus **variantes** (calidad, con o sin marca, URL, peso). No todos los proveedores
+   informan todo: Instagram no trae portada ni duración.
 4. El navegador baja el archivo **directo del CDN** de la plataforma. El video nunca pasa por
    Vercel (las funciones tienen un límite de 4,5 MB por respuesta y un video de 20 s ya pesa
    ~5 MB): la API solo devuelve un JSON chico.
@@ -32,10 +35,12 @@ flowchart LR
   API -- "registry.resolve(url)" --> R[core/registry]
   R -- "detect() → plataforma" --> P[platforms/tiktok]
   R -- "detect() → plataforma" --> X[platforms/x]
+  R -- "detect() → plataforma" --> I[platforms/instagram]
   P -- "providers en orden<br/>(fallback)" --> T[tikwm]
   X -- "providers en orden<br/>(fallback)" --> F[FxTwitter] & S[embeds de X]
+  I -- "un solo proveedor" --> V[vxinstagram]
   API -- "{ ok, data: MediaResult }" --> U
-  U == "fetch del MP4 directo" ==> CDN[(CDN de TikTok / video.twimg.com)]
+  U == "fetch del MP4 directo" ==> CDN[(CDN de TikTok / video.twimg.com / cdninstagram)]
 ```
 
 ### Capas
@@ -52,16 +57,21 @@ src/
     url.ts                   Extrae el link de un texto compartido
   platforms/
     index.ts                 Lista de plataformas habilitadas + registry de la app
+    media.ts                 Común a los proveedores: calidad por resolución, tamaños con HEAD, /N
     tiktok/
       detect.ts              ¿Es un link de video de TikTok? (incluye vm./vt.tiktok.com)
       providers/tikwm.ts     Adaptador: llama a tikwm y normaliza a MediaResult
       index.ts               Define la plataforma y su lista ordenada de proveedores
     x/
       detect.ts              ¿Es un link a un post de X? (x.com, twitter.com, fxtwitter…)
-      media.ts               Calidades por resolución, /video/N y tamaños con HEAD al CDN
+      media.ts               Variantes a partir de los MP4 de video.twimg.com y etiquetas
       providers/fxtwitter.ts Adaptador de FxTwitter (principal)
       providers/syndication.ts Adaptador del endpoint de embeds de X (respaldo)
       index.ts               Plataforma X: FxTwitter primero, embeds de X después
+    instagram/
+      detect.ts              ¿Es un link a un post de Instagram? (reel, p, tv, share y dominios "fix")
+      providers/vxinstagram.ts Adaptador que lee la página de vxinstagram
+      index.ts               Plataforma Instagram
   lib/                       Utilidades: auth, env, respuestas de la API, throttle, formato
     client/                  Solo navegador: llamada a la API, descarga, historial, preferencias
   components/                UI (cliente)
@@ -93,7 +103,8 @@ interface Provider {
   timeout), pasa al siguiente. Si fallan todos, informa el error más útil (`NO_VIDEO` le gana a
   `NOT_FOUND`, que le gana a `RATE_LIMITED`, que le gana a `TIMEOUT`, etc.).
 - Un `MediaResult` tiene `items` (uno o más videos) y, opcional, `selectedIndex`: el video que
-  pide el link (`x.com/…/video/2`). Las variantes van dentro de cada video.
+  pide el link (`x.com/…/video/2` o `instagram.com/p/…?img_index=2`). Las variantes van dentro de
+  cada video.
 - Las respuestas de la API tienen siempre la misma forma: `{ ok: true, data }` o
   `{ ok: false, error: { code, message } }`.
 
@@ -172,20 +183,20 @@ CI: GitHub Actions corre lint, formato, typecheck, tests y build en cada push y 
 
 ## Cómo agregar una red social nueva
 
-Ejemplo: Instagram con un proveedor hipotético `ejemplo`. Solo se tocan archivos nuevos y una
+Ejemplo: Facebook con un proveedor hipotético `ejemplo`. Solo se tocan archivos nuevos y una
 línea del registro.
 
-1. **Detección** — `src/platforms/instagram/detect.ts`:
+1. **Detección** — `src/platforms/facebook/detect.ts`:
 
    ```ts
    import { normalizedHost } from "@/core/url";
 
-   export function isInstagramVideoUrl(url: URL): boolean {
-     return normalizedHost(url) === "instagram.com" && /^\/(reel|p)\/[\w-]+\/?$/.test(url.pathname);
+   export function isFacebookVideoUrl(url: URL): boolean {
+     return normalizedHost(url) === "facebook.com" && /^\/reel\/\d+\/?$/.test(url.pathname);
    }
    ```
 
-2. **Proveedor** — `src/platforms/instagram/providers/ejemplo.ts`: llamá a la API con la señal
+2. **Proveedor** — `src/platforms/facebook/providers/ejemplo.ts`: llamá a la API con la señal
    del registry, validá la respuesta con Zod y devolvé un `MediaResult`. Lanzá `AppError` con el
    código que corresponda (`NOT_FOUND`, `RATE_LIMITED`, `PROVIDER_ERROR`…).
 
@@ -211,7 +222,7 @@ línea del registro.
        if (!response.ok) throw new AppError("PROVIDER_ERROR", `ejemplo: HTTP ${response.status}`);
        const data = responseSchema.parse(await response.json());
        return {
-         platform: "instagram",
+         platform: "facebook",
          provider: "ejemplo",
          id: data.id,
          sourceUrl: url,
@@ -236,19 +247,19 @@ línea del registro.
    };
    ```
 
-3. **Plataforma** — `src/platforms/instagram/index.ts`:
+3. **Plataforma** — `src/platforms/facebook/index.ts`:
 
    ```ts
    import type { Platform } from "@/core/types";
-   import { isInstagramVideoUrl } from "./detect";
+   import { isFacebookVideoUrl } from "./detect";
    import { ejemploProvider } from "./providers/ejemplo";
 
-   export const instagram: Platform = {
-     id: "instagram",
-     name: "Instagram",
+   export const facebook: Platform = {
+     id: "facebook",
+     name: "Facebook",
      watermarked: false,
      defaultQuality: "hd",
-     detect: isInstagramVideoUrl,
+     detect: isFacebookVideoUrl,
      providers: [ejemploProvider],
    };
    ```
@@ -256,17 +267,18 @@ línea del registro.
 4. **Registro** — `src/platforms/index.ts`:
 
    ```ts
-   export const platforms: readonly Platform[] = [tiktok, x, instagram];
+   export const platforms: readonly Platform[] = [tiktok, x, instagram, facebook];
    ```
 
-5. **Tests** — copiá el patrón de `src/platforms/tiktok/` o `src/platforms/x/`: tests de
-   `detect` y del adaptador con un fixture de una respuesta real y `fetch` mockeado.
+5. **Tests** — copiá el patrón de `src/platforms/tiktok/`, `src/platforms/x/` o
+   `src/platforms/instagram/`: tests de `detect` y del adaptador con un fixture de una respuesta
+   real y `fetch` mockeado.
 
 6. **Logo (opcional)** — sumá el path SVG de la red a `src/components/platform-icon.tsx` para que
    el campo muestre su ícono al detectarla. Sin logo, la app funciona igual.
 
 La UI, la API, el historial y la descarga funcionan sin cambios: la validación del cliente y los
-textos ("Funciona con TikTok, X e Instagram") salen del mismo registro.
+textos ("Funciona con TikTok, X, Instagram y Facebook") salen del mismo registro.
 
 Para sumar **otro proveedor de TikTok** (por ejemplo, un proxy propio como respaldo), creá
 `src/platforms/tiktok/providers/<nombre>.ts` y agregalo a la lista `providers` de
@@ -283,7 +295,9 @@ En Android, la app muestra la sección **Agregá GigaDown a Compartir**:
    navegadores, usá el menú **⋮** → **Instalar app** (o _Agregar a la pantalla principal_ →
    _Instalar_).
 2. En TikTok, en el video: **Compartir → Más** (o _Otras apps_) → **GigaDown**. En X, en el
-   post: **Compartir** (la flecha) → la opción de compartir con otras apps → **GigaDown**.
+   post: **Compartir** (la flecha) → la opción de compartir con otras apps → **GigaDown**. En
+   Instagram: el avión de papel → la opción de compartir con otras apps → **GigaDown** (si no
+   aparece, **Copiar enlace** y pegalo en la app).
 3. GigaDown se abre con el link y lo resuelve solo. Tocá **Descargar**: queda en Descargas y en
    la galería. Si en cambio se abre el reproductor, tocá **⋮ → Descargar**.
 
@@ -300,7 +314,8 @@ con `?url=<link>`. En iPhone y iPad, la app muestra la sección **Agregá GigaDo
    la app Atajos. iOS siempre pide esa confirmación: una página web no puede instalar un atajo
    por su cuenta.
 3. Para usarlo: en TikTok, **Compartir → Más (···)** → **GigaDown**; en X, **Compartir** (la
-   flecha) → la opción de compartir con otras apps → **GigaDown**. También podés tocar **Copiar enlace** y
+   flecha) → la opción de compartir con otras apps → **GigaDown**; en Instagram, el avión de papel
+   → la opción de compartir con otras apps → **GigaDown**. También podés tocar **Copiar enlace** y
    ejecutar el atajo desde la pantalla de inicio (usa el portapapeles).
 
 Se abre en Safari y resuelve el video solo. Tocá **Descargar** y después **Guardar en Fotos** →
@@ -406,6 +421,28 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
 - **Detección en el campo:** mientras pegás o escribís, el ícono a la izquierda pasa a ser el de
   la red detectada (logos de Simple Icons, CC0).
 
+### Instagram
+
+- **Por qué vxinstagram.** Los caminos anónimos a Instagram se fueron cerrando: la página de embed
+  ya no trae el video (junio de 2026), la API móvil pide login y yt-dlp necesita imitar a un
+  navegador a nivel TLS. La instancia pública de cobalt no permite uso de terceros. De los servicios
+  "fix", vxinstagram es el único que le responde a un cliente que se identifica como lo que es; los
+  otros solo les contestan a bots como Discord, y no nos hacemos pasar por uno.
+- **Sin login, a propósito.** Con cookies se verían más posts, pero arriesga la cuenta y deja un
+  secreto en Vercel.
+- **Se lee el cuerpo de la página.** Trae un `<video>` por cada video del post con su link directo,
+  así que un solo pedido alcanza para un álbum entero. `og:video` queda de respaldo si el cuerpo
+  cambia: es para lo que existe el servicio.
+- **Solo se aceptan links de `cdninstagram.com` y `fbcdn.net`.** Es un servicio de terceros sin
+  garantías: no puede mandar a nadie a otro sitio.
+- **`video.xx.fbcdn.net`.** Los links `instagram.*.fna.fbcdn.net` les responden a los navegadores con
+  un redirect a ese host sin cabecera CORS, y la descarga falla. Desde el servidor no se ve: `fetch`
+  de Node sigue el redirect y solo mira la respuesta final. Por eso se entregan ya apuntando ahí
+  (`browserFriendlyUrl`). Es un comportamiento no documentado del CDN: si cambia, la app cae en
+  "abrir en otra pestaña". Para verificar descargas de Instagram hay que usar un navegador real.
+- **Un MP4 por video**, sin selector de calidad. Los álbumes usan el selector de X, y
+  `?img_index=N` arranca en el video pedido (cuenta fotos y videos juntos, igual que Instagram).
+
 ## Limitaciones conocidas
 
 - **Dependencia total de tikwm.** Es una API pública no oficial, gratuita y sin garantías: puede
@@ -417,14 +454,28 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
   FxTwitter.
 - **Posts privados o sensibles de X:** sin iniciar sesión, X no los muestra. Aparecen como "No
   encontramos ese video".
+- **Instagram depende de vxinstagram y no tiene respaldo.** Corre en el servidor de una persona y a
+  su vez depende de Snapsave, sin API documentada ni garantías. Si se cae, la app muestra "El servicio
+  de descarga falló". Las salidas son autohospedarlo (es MIT, con Docker) o una API paga.
+- **Qué no baja de Instagram.** Medido el 6/11/2026 en unos 100 posts públicos con video: 3 no
+  resolvieron (aparecen como "No encontramos ese video") y al reintentar siguen igual. Tampoco bajan
+  las cuentas privadas, el contenido con restricción de edad (requiere sesión) ni las historias (el
+  link se rechaza de entrada). La primera vez que se pide un post puede tardar: si pasa los 10 s da
+  "El servicio tardó demasiado", y al reintentar suele responder.
+- **Algunos videos de Instagram vienen sin sonido:** 3 de 109 revisados no traían pista de audio, y
+  el servicio no ofrece otro archivo. La app no lo avisa antes de bajar.
+- **Instagram llega hasta 720p** y no trae portada ni duración (la tarjeta muestra el ícono de play).
+  En algunos carruseles publicados como reel solo aparece un video.
+- **Sin probar en Instagram:** los links `/share/` (no hubo ninguno real para probar), iPhone y
+  Android reales, y Safari. Sí se probó en Chrome de escritorio y en tamaño de celular.
 - **Límite de pedidos de tikwm (~1/s por IP).** Las funciones de Vercel salen por IPs
   compartidas, así que el límite puede aparecer aunque vos hagas un solo pedido. La app lo muestra
   como "Fueron muchos pedidos seguidos" y se resuelve reintentando a los segundos. El espaciado de
   1,1 s es por instancia, no global.
 - **Los links de descarga vencen** (horas). Si un resultado quedó abierto mucho tiempo, la app
   avisa y ofrece buscarlo de nuevo.
-- **Solo videos (y GIFs de X).** Las publicaciones de fotos (carruseles de TikTok, fotos de X) no
-  están soportadas todavía: la app avisa "Esa publicación no tiene video".
+- **Solo videos (y GIFs de X).** Las publicaciones de fotos (carruseles de TikTok, fotos de X e
+  Instagram) no están soportadas todavía: la app avisa "Esa publicación no tiene video".
 - **HD en H.265:** puede no reproducirse en Windows sin la extensión HEVC, en Firefox o en
   Android viejos. Para esos casos está Estándar.
 - **iOS no tiene share target** para apps web: se usa el Atajo, que abre Safari.
