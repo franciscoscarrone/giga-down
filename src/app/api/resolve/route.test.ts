@@ -75,6 +75,32 @@ describe("POST /api/resolve", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("https://api.fxtwitter.com/2/status/");
   });
 
+  it("detecta un link de Instagram y lo resuelve con su plataforma", async () => {
+    const page = `<meta property="og:title" content="Instagram (@instagram)" />
+      <meta property="og:description" content="Un reel" />
+      <video><source src="https://scontent.cdninstagram.com/o1/reel.mp4?oe=6AEDBFD4" type="video/mp4" /></video>`;
+    fetchMock.mockResolvedValueOnce(new Response(page));
+    // El HEAD al CDN para conocer el tamaño.
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { headers: { "content-length": "1000000" } }),
+    );
+
+    const response = await post({
+      url: "https://www.instagram.com/reel/Chunk8-jurw/?igsh=abc",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mediaResultSchema.parse(body.data)).toMatchObject({
+      platform: "instagram",
+      provider: "vxinstagram",
+      id: "Chunk8-jurw",
+      author: { username: "instagram" },
+    });
+    expect(body.data.items[0].variants[0].size).toBe(1_000_000);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://vxinstagram.com/reel/Chunk8-jurw/");
+  });
+
   it("acepta el texto que comparte la app de TikTok", async () => {
     tikwmReplies(fixture);
     const response = await post({ url: `Mirá este video ${TIKTOK_URL} 😂` });

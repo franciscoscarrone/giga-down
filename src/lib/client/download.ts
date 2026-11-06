@@ -3,7 +3,7 @@ import { qualityRank, type MediaItem, type MediaResult, type MediaVariant } from
 /**
  * Descarga directa desde el CDN al dispositivo: el video nunca pasa por nuestro servidor.
  *
- * 1. `fetch` del link a un Blob (los CDN de TikTok y de X responden con CORS abierto).
+ * 1. `fetch` del link a un Blob (los CDN de TikTok, X e Instagram responden con CORS abierto).
  * 2. Si la calidad elegida falla, se prueba con las otras sin marca de agua.
  * 3. Si ninguna se puede bajar por CORS o red, el llamador abre el link en otra pestaña.
  */

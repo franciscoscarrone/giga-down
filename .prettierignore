@@ -4,3 +4,5 @@ coverage
 package-lock.json
 next-env.d.ts
 AGENTS.md
+# Respuestas reales de un servicio externo: se dejan como vinieron.
+src/platforms/instagram/providers/__fixtures__/*.html

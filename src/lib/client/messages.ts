@@ -1,3 +1,4 @@
+import { platformNames } from "@/platforms";
 import type { ClientErrorCode } from "./api";
 
 export interface ErrorCopy {
@@ -11,7 +12,7 @@ export interface ErrorCopy {
 export const ERROR_COPY: Record<ClientErrorCode, ErrorCopy> = {
   UNSUPPORTED_URL: {
     title: "Ese link no es de un video soportado",
-    hint: "Funciona con videos de TikTok y de X. En la app tocá Compartir → Copiar enlace.",
+    hint: `Funciona con videos de ${platformNames("conjunction")}. En la app tocá Compartir → Copiar enlace.`,
     retry: false,
   },
   NOT_FOUND: {
