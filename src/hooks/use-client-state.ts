@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { detectOS, type DeviceOS } from "@/lib/client/device";
 import type { PersistentStore } from "@/lib/client/persistent-store";
 
 /** Lee un valor persistido. En el servidor y en la hidratación devuelve el valor por defecto. */
@@ -16,6 +17,15 @@ export function useHydrated(): boolean {
     noopSubscribe,
     () => true,
     () => false,
+  );
+}
+
+/** Sistema operativo del dispositivo. `null` en el servidor y en la hidratación. */
+export function useDeviceOS(): DeviceOS | null {
+  return useSyncExternalStore<DeviceOS | null>(
+    noopSubscribe,
+    () => detectOS(navigator.userAgent, navigator.maxTouchPoints),
+    () => null,
   );
 }
 

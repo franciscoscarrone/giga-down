@@ -13,6 +13,7 @@ import { HistoryList } from "./history-list";
 import { LockIcon } from "./icons";
 import { Wordmark } from "./logo";
 import { ResultCard } from "./result-card";
+import { ShortcutInstall } from "./shortcut-install";
 import { EmptyState, ErrorPanel, ResultSkeleton } from "./states";
 import { Toast } from "./toast";
 import { UrlForm } from "./url-form";
@@ -215,7 +216,7 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
               </div>
             </section>
 
-            <div className="max-w-xl lg:row-start-2">
+            <div className="flex max-w-xl flex-col gap-10 lg:row-start-2">
               <HistoryList
                 entries={history}
                 now={now}
@@ -226,6 +227,7 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
                 }}
                 onClear={() => historyStore.set([])}
               />
+              <ShortcutInstall />
             </div>
           </div>
         )}

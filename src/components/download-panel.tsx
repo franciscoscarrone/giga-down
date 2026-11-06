@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { MediaItem, MediaResult, MediaVariant, Platform } from "@/core/types";
-import { usePersistentStore } from "@/hooks/use-client-state";
-import { detectOS, type DeviceOS } from "@/lib/client/device";
+import { useDeviceOS, usePersistentStore } from "@/hooks/use-client-state";
+import type { DeviceOS } from "@/lib/client/device";
 import { canShareFile, DownloadError, downloadMedia, saveFile } from "@/lib/client/download";
 import { qualityPreferenceStore } from "@/lib/client/preferences";
 import { formatBytes } from "@/lib/format";
@@ -17,14 +17,6 @@ type Phase =
   | { kind: "done" }
   | { kind: "blocked"; variant: MediaVariant }
   | { kind: "expired" };
-
-const noopSubscribe = () => () => {};
-const useDeviceOS = () =>
-  useSyncExternalStore<DeviceOS | null>(
-    noopSubscribe,
-    () => detectOS(navigator.userAgent, navigator.maxTouchPoints),
-    () => null,
-  );
 
 const HELP: Record<DeviceOS, string> = {
   ios: "En iPhone: tocá “Guardar en Fotos” y elegí Guardar video. Si se abre el reproductor, usá Compartir → Guardar video.",

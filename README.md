@@ -289,7 +289,25 @@ Compartir solo lo ofrecen las apps instaladas como WebAPK).
 ### iPhone: Atajo
 
 En iOS las apps web no reciben contenido compartido, así que se usa un Atajo que abre GigaDown
-con `?url=<link>`:
+con `?url=<link>`. En iPhone y iPad, la app muestra la sección **Agregá GigaDown a Compartir**:
+
+1. Desde Safari, tocá **Agregar el atajo** y aceptá la descarga.
+2. Abrí el archivo desde las descargas de Safari o desde **Archivos → Descargas**, y confirmá en
+   la app Atajos. iOS siempre pide esa confirmación: una página web no puede instalar un atajo
+   por su cuenta.
+3. Para usarlo: en TikTok, **Compartir → Más (···)** → **GigaDown**; en X, **Compartir** (la
+   flecha) → la opción de compartir con otras apps → **GigaDown**. También podés tocar **Copiar enlace** y
+   ejecutar el atajo desde la pantalla de inicio (usa el portapapeles).
+
+Se abre en Safari y resuelve el video solo. Tocá **Descargar** y después **Guardar en Fotos** →
+**Guardar video**.
+
+**Para cambiar el atajo:** `public/GigaDown.shortcut` está firmado por Apple para cualquier
+persona y lleva adentro la URL de producción. No lo edites: un byte distinto invalida la firma.
+Exportalo de nuevo desde Atajos, con la opción **Cualquier persona**, y reemplazá el archivo. El
+certificado de la firma actual vence el 30/11/2027.
+
+**Para armarlo a mano:**
 
 1. Abrí **Atajos** → **+** (nuevo atajo). Tocá el nombre de arriba → **Renombrar** → `GigaDown`.
 2. Tocá **ⓘ** (Detalles) → activá **Mostrar en la hoja para compartir** → Listo.
@@ -300,12 +318,6 @@ con `?url=<link>`:
 5. Agregá la acción **Texto** y escribí `https://giga-down.vercel.app/?url=` seguido de la
    variable **Texto codificado URL** (tocá _Variables_ arriba del teclado).
 6. Agregá la acción **Abrir URL** con la variable **Texto**.
-7. Para usarlo: en TikTok, **Compartir → Más (···)** → **GigaDown**; en X, **Compartir** (la
-   flecha) → la opción de compartir con otras apps → **GigaDown**. También podés tocar **Copiar enlace** y
-   ejecutar el atajo desde la pantalla de inicio (usa el portapapeles).
-
-Se abre en Safari y resuelve el video solo. Tocá **Descargar** y después **Guardar en Fotos** →
-**Guardar video**.
 
 ## Decisiones
 
