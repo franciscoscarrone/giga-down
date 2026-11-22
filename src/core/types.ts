@@ -86,6 +86,11 @@ export interface ProviderContext {
 
 export interface Provider {
   id: string;
+  /**
+   * Timeout propio, en ms, para servicios que tardan más que el resto. Si no está, se usa el del
+   * registry (`PROVIDER_TIMEOUT_MS`).
+   */
+  timeoutMs?: number;
   resolve(url: string, context: ProviderContext): Promise<MediaResult>;
 }
 

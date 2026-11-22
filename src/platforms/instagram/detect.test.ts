@@ -78,6 +78,15 @@ describe("parseInstagramUrl", () => {
   });
 
   it.each([
+    ["https://www.instagram.com/nike/reel/Df8Tj7uNwUe/", "nike"],
+    ["https://www.instagram.com/marvelskies.fc/p/CWqAgUZgCku/", "marvelskies.fc"],
+    ["https://www.instagram.com/reel/Df8Tj7uNwUe/", undefined],
+    ["https://www.instagram.com/share/reel/BAGkPZ3Lm9/", undefined],
+  ])("%s trae el usuario %s", (href, username) => {
+    expect(parse(href)?.username).toBe(username);
+  });
+
+  it.each([
     ["https://www.instagram.com/p/DSzVXzKDy-M/?img_index=3", 3],
     ["https://vxinstagram.com/p/DSzVXzKDy-M/2/", 2],
     ["https://www.instagram.com/p/DSzVXzKDy-M/?img_index=0", undefined],

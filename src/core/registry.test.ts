@@ -154,6 +154,29 @@ describe("registry.resolve", () => {
     });
   });
 
+  it("respeta el timeout propio de un proveedor lento, por encima del del registry", async () => {
+    const slow: Provider = {
+      id: "lento",
+      timeoutMs: 200,
+      resolve: () => new Promise((done) => setTimeout(() => done(result("lento")), 60)),
+    };
+    const hanging: Provider = {
+      id: "colgado",
+      timeoutMs: 20,
+      resolve: () => new Promise(() => {}),
+    };
+
+    const registry = createRegistry([platformWith(slow)], { timeoutMs: 20 });
+    await expect(registry.resolve("https://fake.example/v/123")).resolves.toMatchObject({
+      provider: "lento",
+    });
+
+    const strict = createRegistry([platformWith(hanging)], { timeoutMs: 5_000 });
+    await expect(strict.resolve("https://fake.example/v/123")).rejects.toMatchObject({
+      code: "TIMEOUT",
+    });
+  });
+
   it("le pasa al proveedor una señal que se aborta por timeout", async () => {
     let seen: AbortSignal | undefined;
     const slow: Provider = {

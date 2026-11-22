@@ -7,6 +7,7 @@ import {
   USER_AGENT,
   withSizes,
 } from "@/platforms/media";
+import { authorFromTitle, browserFriendlyUrl, decodeEntities, isInstagramCdn } from "../common";
 import { parseInstagramUrl, type InstagramRef } from "../detect";
 
 /**
@@ -15,66 +16,23 @@ import { parseInstagramUrl, type InstagramRef } from "../detect";
  *
  * - `GET /reel/<código>/` o `/p/<código>/` devuelve HTML con etiquetas Open Graph y, en el cuerpo,
  *   un `<video><source src>` o un `<img src>` por cada medio del post, ya con el link del CDN de
- *   Instagram. Un código que no resuelve responde 404.
+ *   Instagram. Si no puede resolver un código responde 404, exista el post o no.
  * - `/reels/` no existe en el servicio: hay que pedir `/reel/`.
  * - Si el primer medio de un álbum es una foto (o hay varios videos), las etiquetas Open Graph
  *   solo traen una imagen: hay que mirar el cuerpo para encontrar todos los videos.
  * - Los links `instagram.*.fna.fbcdn.net` no se pueden bajar desde el navegador tal como vienen
  *   (ver `browserFriendlyUrl`).
- * - Corre en el servidor de una persona y depende de Snapsave: es el punto débil de esta red.
+ * - Corre en el servidor de una persona y le pide todo a Snapsave. Desde noviembre de 2026 responde
+ *   404 a casi todo (solo resuelve lo que tiene en caché), por eso detrás está `snapsave.ts`, que va
+ *   directo a la misma fuente. Se deja primero porque, cuando anda, es más rápido y trae el autor y
+ *   el texto del post.
  */
 
 export const VXINSTAGRAM_ORIGIN = "https://vxinstagram.com";
 
 const META_TAG = /<meta\s+(?:property|name)="([^"]+)"\s+content="([^"]*)"/g;
 const MEDIA_TAG = /<(source|img)\s[^>]*?\bsrc="([^"]+)"/g;
-const CDN_HOST = /(?:^|\.)(?:cdninstagram\.com|fbcdn\.net)$/;
-/** "Nombre (@usuario)", con el nombre vacío en algunas cuentas. */
-const AUTHOR_TITLE = /^(.*?)\s*\(@([\w.]+)\)\s*$/s;
 const POST_CODE_IN_URL = /\/(?:reel|p|tv)\/([\w-]+)/;
-
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-};
-
-/** El texto llega con entidades HTML: "&#x201C;Hola&#x201D;&#xA;&amp; chau". */
-export function decodeEntities(text: string): string {
-  return text.replace(
-    /&(?:#x([\da-f]+)|#(\d+)|(\w+));/gi,
-    (whole, hex?: string, decimal?: string, name?: string) => {
-      if (name) return NAMED_ENTITIES[name] ?? whole;
-      const code = hex ? parseInt(hex, 16) : Number(decimal);
-      return code <= 0x10ffff ? String.fromCodePoint(code) : whole;
-    },
-  );
-}
-
-/** Solo se aceptan links del CDN de Instagram: el servicio no puede mandarnos a otro lado. */
-function isInstagramCdn(url: string): boolean {
-  try {
-    const { protocol, hostname } = new URL(url);
-    return protocol === "https:" && CDN_HOST.test(hostname);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * `instagram.*.fna.fbcdn.net` les responde a los navegadores con un redirect a video.xx.fbcdn.net
- * sin cabecera CORS, así que el `fetch` de la descarga falla (a Node no se lo hace: no se ve desde
- * el servidor). El mismo link pedido directo a ese host responde con CORS abierto. Los de
- * `scontent-*.cdninstagram.com` no tienen el problema.
- */
-export function browserFriendlyUrl(url: string): string {
-  const parsed = new URL(url);
-  if (!parsed.hostname.endsWith(".fna.fbcdn.net")) return url;
-  parsed.hostname = "video.xx.fbcdn.net";
-  return parsed.href;
-}
 
 export interface VxMedia {
   url: string;
@@ -133,16 +91,13 @@ export function normalizeVxPage(page: VxPage, ref: InstagramRef, sourceUrl: stri
     };
   });
 
-  const author = AUTHOR_TITLE.exec(page.metas.get("og:title") ?? "");
+  const author = authorFromTitle(page.metas.get("og:title"));
   return {
     platform: "instagram",
     provider: "vxinstagram",
     id,
     sourceUrl,
-    author: {
-      username: author?.[2] ?? "desconocido",
-      displayName: author?.[1] || undefined,
-    },
+    author: author ?? { username: ref.username ?? "desconocido" },
     title: page.metas.get("og:description")?.trim() ?? "",
     items,
     selectedIndex: selectedVideoIndex(
@@ -193,7 +148,10 @@ export function createVxInstagramProvider(options: VxInstagramProviderOptions = 
           headers: { accept: "text/html", "user-agent": USER_AGENT },
           cache: "no-store",
         });
-        if (response.status === 404) throw new AppError("NOT_FOUND", "vxinstagram: HTTP 404");
+        // Su 404 no prueba que el post no exista: el servicio lo devuelve ante cualquier falla.
+        if (response.status === 404) {
+          throw new AppError("PROVIDER_ERROR", "vxinstagram: HTTP 404 (no lo pudo resolver)");
+        }
         if (response.status === 429) throw new AppError("RATE_LIMITED", "vxinstagram: HTTP 429");
         if (!response.ok) {
           throw new AppError("PROVIDER_ERROR", `vxinstagram: HTTP ${response.status}`);

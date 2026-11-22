@@ -14,7 +14,7 @@ import { LockIcon } from "./icons";
 import { Wordmark } from "./logo";
 import { ResultCard } from "./result-card";
 import { ShareSetup } from "./share-setup";
-import { EmptyState, ErrorPanel, ResultSkeleton } from "./states";
+import { EmptyState, ErrorPanel, ResultSkeleton, SlowNotice } from "./states";
 import { Toast } from "./toast";
 import { UrlForm } from "./url-form";
 
@@ -196,6 +196,10 @@ export function GigaDownApp({ authRequired }: { authRequired: boolean }) {
                   <>
                     <p className="sr-only">Buscando el video…</p>
                     <ResultSkeleton />
+                    <SlowNotice
+                      key={state.input}
+                      platformName={registry.match(state.input)?.platform.name}
+                    />
                   </>
                 )}
                 {state.status === "success" && (

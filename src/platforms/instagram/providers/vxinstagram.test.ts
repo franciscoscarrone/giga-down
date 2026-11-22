@@ -2,12 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "@/core/errors";
 import { mediaResultSchema } from "@/core/types";
-import {
-  browserFriendlyUrl,
-  createVxInstagramProvider,
-  decodeEntities,
-  VXINSTAGRAM_ORIGIN,
-} from "./vxinstagram";
+import { createVxInstagramProvider, VXINSTAGRAM_ORIGIN } from "./vxinstagram";
 
 /** Respuestas reales del servicio, recortadas; las URLs firmadas y los autores son de prueba. */
 const fixture = (name: string) =>
@@ -85,19 +80,6 @@ describe("vxinstagram: normalización", () => {
       "https://video.xx.fbcdn.net/o1/v/t2/f2/m367/AQMdos.mp4?_nc_cat=1&oe=6AEDBFD4",
     ]);
     expect(media.selectedIndex).toBeUndefined();
-  });
-
-  it("deja igual los links que ya se pueden bajar desde el navegador", () => {
-    const scontent = "https://scontent-ams4-1.cdninstagram.com/o1/a.mp4?_nc_cat=1&oe=6AEDBFD4";
-    expect(browserFriendlyUrl(scontent)).toBe(scontent);
-  });
-
-  it("al cambiar el host no toca la ruta ni la firma del link", () => {
-    const signed =
-      "https://instagram.fein1-2.fna.fbcdn.net/o1/v/t2/AQN_x-y.mp4?_nc_ht=instagram.fein1-2.fna.fbcdn.net&efg=eyJ2Ijoi%3D%3D&oh=00_AQSH&oe=6AEF4302";
-    expect(browserFriendlyUrl(signed)).toBe(
-      "https://video.xx.fbcdn.net/o1/v/t2/AQN_x-y.mp4?_nc_ht=instagram.fein1-2.fna.fbcdn.net&efg=eyJ2Ijoi%3D%3D&oh=00_AQSH&oe=6AEF4302",
-    );
   });
 
   it.each([
@@ -209,9 +191,9 @@ describe("vxinstagram: pedidos y errores", () => {
 
   it.each([
     [
-      "HTTP 404 (no existe o no se pudo resolver)",
+      "HTTP 404 (el servicio no lo pudo resolver, exista o no)",
       () => new Response("", { status: 404 }),
-      "NOT_FOUND",
+      "PROVIDER_ERROR",
     ],
     ["HTTP 429", () => new Response("", { status: 429 }), "RATE_LIMITED"],
     ["HTTP 500", () => new Response("", { status: 500 }), "PROVIDER_ERROR"],
@@ -238,22 +220,5 @@ describe("vxinstagram: pedidos y errores", () => {
       code: "UNSUPPORTED_URL",
     });
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-});
-
-describe("decodeEntities", () => {
-  it.each([
-    ["&#x201C;Hola&#x201D;", "“Hola”"],
-    ["uno&#xA;dos", "uno\ndos"],
-    ["&#x1F422;", "🐢"],
-    [
-      "Tom &amp; Jerry &lt;3 &quot;ok&quot; &apos;si&apos; &#39;no&#39;",
-      `Tom & Jerry <3 "ok" 'si' 'no'`,
-    ],
-    ["&desconocida; queda igual", "&desconocida; queda igual"],
-    ["&#x110000; fuera de rango", "&#x110000; fuera de rango"],
-    ["sin nada", "sin nada"],
-  ])("%j → %j", (input, expected) => {
-    expect(decodeEntities(input)).toBe(expected);
   });
 });

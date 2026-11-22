@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ClientError } from "@/lib/client/api";
 import { ERROR_COPY } from "@/lib/client/messages";
 import { platformNames } from "@/platforms";
@@ -62,6 +63,24 @@ export function ResultSkeleton() {
         <div className="h-14 animate-shimmer rounded-[var(--radius-control)] bg-surface-2" />
       </div>
     </div>
+  );
+}
+
+const SLOW_AFTER_MS = 6_000;
+
+/** Aparece si la búsqueda se demora: algunos servicios (Instagram) tardan hasta un minuto. */
+export function SlowNotice({ platformName }: { platformName?: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), SLOW_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!visible) return null;
+  return (
+    <p className="animate-rise text-center text-sm text-muted">
+      Sigue buscando. {platformName ? `A veces ${platformName}` : "A veces el servicio"} tarda en
+      responder, hasta un minuto: no cierres la página.
+    </p>
   );
 }
 

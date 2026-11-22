@@ -24,7 +24,7 @@ const HOSTS = new Set([
  * los servicios "fix") o /embed.
  */
 const POST_PATH =
-  /^(?:\/[A-Za-z0-9._]{1,30})?\/(reels?|p|tv)\/([A-Za-z0-9_-]{5,64})(?:\/(\d{1,2}))?(?:\/embed(?:\/captioned)?)?\/?$/;
+  /^(?:\/([A-Za-z0-9._]{1,30}))?\/(reels?|p|tv)\/([A-Za-z0-9_-]{5,64})(?:\/(\d{1,2}))?(?:\/embed(?:\/captioned)?)?\/?$/;
 
 /** Lo que copia la app en algunos casos: /share/CODIGO, /share/reel/CODIGO o /share/p/CODIGO. */
 const SHARE_PATH = /^\/share\/(?:(reel|p|video)\/)?([A-Za-z0-9_-]{5,64})\/?$/;
@@ -36,6 +36,8 @@ export interface InstagramRef {
   path: string;
   /** Posición del medio que pide el link (?img_index=2 → 2), contando desde 1. */
   mediaNumber?: number;
+  /** Usuario, si el link lo trae (instagram.com/usuario/reel/CODIGO, como lo copia la web). */
+  username?: string;
 }
 
 /** Lee el código del post (y el elemento pedido) de un link de Instagram. No hace pedidos de red. */
@@ -49,13 +51,14 @@ export function parseInstagramUrl(url: URL): InstagramRef | null {
   }
 
   const post = POST_PATH.exec(url.pathname);
-  if (!post?.[2]) return null;
-  const kind = post[1]?.startsWith("reel") ? "reel" : "p";
-  const number = Number(post[3] ?? url.searchParams.get("img_index"));
+  if (!post?.[3]) return null;
+  const kind = post[2]?.startsWith("reel") ? "reel" : "p";
+  const number = Number(post[4] ?? url.searchParams.get("img_index"));
   return {
-    code: post[2],
-    path: `/${kind}/${post[2]}/`,
+    code: post[3],
+    path: `/${kind}/${post[3]}/`,
     mediaNumber: number > 0 ? number : undefined,
+    username: post[1],
   };
 }
 

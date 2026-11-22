@@ -9,7 +9,10 @@ import {
 import { extractUrl } from "./url";
 
 export interface RegistryOptions {
-  /** Timeout por proveedor, en ms. Si uno se pasa, se prueba el siguiente. */
+  /**
+   * Timeout por proveedor, en ms. Si uno se pasa, se prueba el siguiente. Un proveedor puede
+   * definir el suyo (`Provider.timeoutMs`), que tiene prioridad.
+   */
   timeoutMs?: number;
   /** Se llama cada vez que un proveedor falla (aunque después otro resuelva). */
   onProviderError?: (event: { platform: string; provider: string; error: AppError }) => void;
@@ -125,7 +128,12 @@ export function createRegistry(
 
       for (const provider of platform.providers) {
         try {
-          return await runProvider(provider, url.href, timeoutMs, resolveOptions.signal);
+          return await runProvider(
+            provider,
+            url.href,
+            provider.timeoutMs ?? timeoutMs,
+            resolveOptions.signal,
+          );
         } catch (thrown) {
           const error = toAppError(thrown, "PROVIDER_ERROR");
           errors.push(error);
