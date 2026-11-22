@@ -91,6 +91,12 @@ export function ResultCard({ media, onNotice, onRefresh }: ResultCardProps) {
                 <dd className="text-fg">{sizes.join(" / ")}</dd>
               </div>
             )}
+            {item.hasAudio === false && (
+              <div className="flex gap-1">
+                <dt>Audio</dt>
+                <dd className="text-fg">no tiene</dd>
+              </div>
+            )}
           </dl>
         </div>
       </div>
@@ -137,6 +143,7 @@ function ItemPicker({ media, selected, onSelect }: ItemPickerProps) {
         {media.items.map((item, index) => {
           const active = index === selected;
           const duration = formatDuration(item.durationSeconds);
+          const note = item.label ?? (item.hasAudio === false ? "Sin sonido" : undefined);
           return (
             <label
               key={item.id}
@@ -168,7 +175,7 @@ function ItemPicker({ media, selected, onSelect }: ItemPickerProps) {
                 <span className={active ? "font-semibold" : "font-medium text-muted"}>
                   Video {index + 1}
                 </span>
-                {item.label && <span className="truncate text-muted">{item.label}</span>}
+                {note && <span className="truncate text-muted">{note}</span>}
               </span>
             </label>
           );

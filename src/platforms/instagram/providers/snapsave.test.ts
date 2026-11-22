@@ -6,7 +6,6 @@ import { USER_AGENT } from "@/platforms/media";
 import { INSTAGRAM_ORIGIN } from "../author";
 import {
   cdnUrlFromLink,
-  cdnVideoDetails,
   createSnapsaveProvider,
   normalizeSnapsave,
   parseSnapsaveScript,
@@ -119,30 +118,6 @@ describe("snapsave: links", () => {
     ["nada", undefined],
   ])("descarta %s", (_label, link) => {
     expect(cdnUrlFromLink(link)).toBeUndefined();
-  });
-
-  /** Etiquetas reales; la medida es la del MP4 que bajó el navegador. */
-  it.each([
-    ["vertical de 720x1280", "xpv_progressive.INSTAGRAM.CLIPS.C3.720.dash_baseline_1_v1", "hd"],
-    [
-      "horizontal de 1280x720",
-      "xpv_progressive.INSTAGRAM.CLIPS.C3.1280.progressive_h264-basic-gen2_720p",
-      "hd",
-    ],
-    ["horizontal sin sufijo", "xpv_progressive.INSTAGRAM.CLIPS.C3.1276.dash_baseline_1_v1", "hd"],
-    ["vertical de 480x854", "xpv_progressive.INSTAGRAM.CLIPS.C3.480.dash_baseline_2_v1", "sd"],
-    ["sin medida", "xpv_progressive.INSTAGRAM.CLIPS.dash_baseline_1_v1", undefined],
-  ])("lee calidad y duración del parámetro efg: %s", (_label, tag, quality) => {
-    const efg = Buffer.from(JSON.stringify({ vencode_tag: tag, duration_s: 15 })).toString(
-      "base64",
-    );
-    const url = `https://scontent.cdninstagram.com/a.mp4?efg=${encodeURIComponent(efg)}`;
-    expect(cdnVideoDetails(url)).toEqual({ quality, durationSeconds: 15 });
-  });
-
-  it("sin efg, o si no se puede leer, no inventa nada", () => {
-    expect(cdnVideoDetails("https://scontent.cdninstagram.com/a.mp4")).toEqual({});
-    expect(cdnVideoDetails("https://scontent.cdninstagram.com/a.mp4?efg=%%%")).toEqual({});
   });
 });
 

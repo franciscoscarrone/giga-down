@@ -49,6 +49,8 @@ export const mediaItemSchema = z.object({
   label: z.string().min(1).optional(),
   coverUrl: z.url().optional(),
   durationSeconds: z.number().nonnegative().optional(),
+  /** `false` si el proveedor sabe que el MP4 no tiene pista de audio. Sin dato, no se sabe. */
+  hasAudio: z.boolean().optional(),
   /** Tamaño del video original en píxeles: la portada se dibuja con su proporción. */
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
