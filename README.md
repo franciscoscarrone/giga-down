@@ -20,11 +20,13 @@ se detecta por el link.
    - **TikTok:** la API pública de [tikwm](https://www.tikwm.com).
    - **X:** la API pública de [FxTwitter](https://docs.fxembed.com) y, de respaldo, el endpoint
      de embeds de X (`cdn.syndication.twimg.com`).
-   - **Instagram:** la página de [vxinstagram](https://vxinstagram.com), sin respaldo.
+   - **Instagram:** la página de [vxinstagram](https://vxinstagram.com) y, de respaldo,
+     [Snapsave](https://snapsave.app) directo (la web de la que vxinstagram saca todo).
 3. La respuesta se normaliza a un `MediaResult`: autor, título y uno o más **videos** (un post de
    X puede tener hasta cuatro y un álbum de Instagram, más), cada uno con portada, duración, tamaño
    en píxeles y sus **variantes** (calidad, con o sin marca, URL, peso). No todos los proveedores
-   informan todo: Instagram no trae portada ni duración.
+   informan todo: en Instagram, vxinstagram no trae portada ni duración y Snapsave no trae el
+   texto del post.
 4. El navegador baja el archivo **directo del CDN** de la plataforma. El video nunca pasa por
    Vercel (las funciones tienen un límite de 4,5 MB por respuesta y un video de 20 s ya pesa
    ~5 MB): la API solo devuelve un JSON chico.
@@ -38,7 +40,7 @@ flowchart LR
   R -- "detect() → plataforma" --> I[platforms/instagram]
   P -- "providers en orden<br/>(fallback)" --> T[tikwm]
   X -- "providers en orden<br/>(fallback)" --> F[FxTwitter] & S[embeds de X]
-  I -- "un solo proveedor" --> V[vxinstagram]
+  I -- "providers en orden<br/>(fallback)" --> V[vxinstagram] & SS[Snapsave]
   API -- "{ ok, data: MediaResult }" --> U
   U == "fetch del MP4 directo" ==> CDN[(CDN de TikTok / video.twimg.com / cdninstagram)]
 ```
@@ -70,8 +72,11 @@ src/
       index.ts               Plataforma X: FxTwitter primero, embeds de X después
     instagram/
       detect.ts              ¿Es un link a un post de Instagram? (reel, p, tv, share y dominios "fix")
-      providers/vxinstagram.ts Adaptador que lee la página de vxinstagram
-      index.ts               Plataforma Instagram
+      common.ts              Lo que comparten sus proveedores: links del CDN, entidades, autor
+      author.ts              Autor del post, leído de la página pública de Instagram (extra)
+      providers/vxinstagram.ts Adaptador que lee la página de vxinstagram (principal)
+      providers/snapsave.ts  Adaptador de Snapsave: desempaqueta su respuesta (respaldo)
+      index.ts               Plataforma Instagram: vxinstagram primero, Snapsave después
   lib/                       Utilidades: auth, env, respuestas de la API, throttle, formato
     client/                  Solo navegador: llamada a la API, descarga, historial, preferencias
   components/                UI (cliente)
@@ -156,7 +161,7 @@ el logo; los PNG están versionados).
 | Variable              | Obligatoria | Default | Descripción                                                                                           |
 | --------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------------------- |
 | `ACCESS_KEY`          | No          | —       | Clave de acceso. Si está, la app la pide una vez por dispositivo y la API la exige en `x-access-key`. |
-| `PROVIDER_TIMEOUT_MS` | No          | `10000` | Timeout por proveedor (entre 1000 y 60000 ms).                                                        |
+| `PROVIDER_TIMEOUT_MS` | No          | `10000` | Timeout por proveedor (entre 1000 y 60000 ms). Snapsave tiene el suyo: 45 s.                          |
 
 Generá una clave larga y aleatoria:
 
@@ -428,6 +433,23 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
   navegador a nivel TLS. La instancia pública de cobalt no permite uso de terceros. De los servicios
   "fix", vxinstagram es el único que le responde a un cliente que se identifica como lo que es; los
   otros solo les contestan a bots como Discord, y no nos hacemos pasar por uno.
+- **Snapsave directo, de respaldo (noviembre de 2026).** vxinstagram empezó a responder 404 a casi
+  todo: solo resuelve lo que tiene en caché. Como por dentro no hace más que pedirle el post a
+  Snapsave, que sigue andando, se le pide a Snapsave directo con el mismo pedido que hace su
+  formulario (`POST /action.php`). Detalles:
+  - La respuesta es un script empaquetado que escribe el HTML de los resultados; se desarma sin
+    ejecutarlo (`unpackSnapsave`).
+  - Los links pasan por `d.rapidcdn.app?token=<JWT>`, y el JWT trae el link original del CDN de
+    Instagram: se usa ese, así la descarga no depende de un servicio más.
+  - Gana portada y duración, y la calidad sale del parámetro `efg` del link del CDN. Pierde el
+    texto del post; el autor se busca aparte en la página pública de Instagram (mientras Snapsave
+    responde) o se toma del link si lo trae (`instagram.com/usuario/reel/…`).
+  - Se identifica como `GigaDown/1.0`, pero manda el `Origin` y el `Referer` de su formulario: sin
+    eso, Cloudflare corta con un desafío.
+  - Tarda de 2 a más de 30 s, así que tiene su propio timeout (45 s, `Provider.timeoutMs`) y la app
+    avisa si la búsqueda se demora.
+  - El 404 de vxinstagram cuenta como falla del servicio, no como "no existe": lo devuelve ante
+    cualquier problema. El veredicto lo da Snapsave.
 - **Sin login, a propósito.** Con cookies se verían más posts, pero arriesga la cuenta y deja un
   secreto en Vercel.
 - **Se lee el cuerpo de la página.** Trae un `<video>` por cada video del post con su link directo,
@@ -454,18 +476,25 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
   FxTwitter.
 - **Posts privados o sensibles de X:** sin iniciar sesión, X no los muestra. Aparecen como "No
   encontramos ese video".
-- **Instagram depende de vxinstagram y no tiene respaldo.** Corre en el servidor de una persona y a
-  su vez depende de Snapsave, sin API documentada ni garantías. Si se cae, la app muestra "El servicio
-  de descarga falló". Las salidas son autohospedarlo (es MIT, con Docker) o una API paga.
-- **Qué no baja de Instagram.** Medido el 6/11/2026 en unos 100 posts públicos con video: 3 no
-  resolvieron (aparecen como "No encontramos ese video") y al reintentar siguen igual. Tampoco bajan
-  las cuentas privadas, el contenido con restricción de edad (requiere sesión) ni las historias (el
-  link se rechaza de entrada). La primera vez que se pide un post puede tardar: si pasa los 10 s da
-  "El servicio tardó demasiado", y al reintentar suele responder.
+- **Instagram depende de Snapsave**, directo o a través de vxinstagram. Es una web de descargas sin
+  API ni permiso para usarla así: puede cambiar el formato del script, pedir un desafío o bloquear
+  las IPs de Vercel, y no hay otra fuente gratis que ande (los otros "fix" y las webs parecidas
+  están caídas o piden firmas). Si se cae, la app muestra "El servicio de descarga falló". La salida
+  robusta es una API paga (con la clave en Vercel); autohospedar vxinstagram no alcanza, porque
+  también depende de Snapsave.
+- **Instagram es lento.** Snapsave tardó de 2 a 35 s (mediana de 12 s) el 22/11/2026; a veces pasa
+  los 45 s y da "El servicio tardó demasiado". Un post que no existe también tarda en fallar.
+- **Qué no baja de Instagram.** Con Snapsave directo, el 22/11/2026, sobre 27 posts públicos
+  (reels, álbumes y fotos): 23 resolvieron al primer intento, 2 al reintentar, 1 pasó los 40 s y un
+  reel de 2022 vino siempre sin link del video. Snapsave responde "Unable to connect to Instagram
+  server" tanto para posts que no existen como para privados, y la app lo muestra como "No
+  encontramos ese video". Tampoco bajan las cuentas privadas, el contenido con restricción de edad
+  (requiere sesión) ni las historias (el link se rechaza de entrada).
 - **Algunos videos de Instagram vienen sin sonido:** 3 de 109 revisados no traían pista de audio, y
   el servicio no ofrece otro archivo. La app no lo avisa antes de bajar.
-- **Instagram llega hasta 720p** y no trae portada ni duración (la tarjeta muestra el ícono de play).
-  En algunos carruseles publicados como reel solo aparece un video.
+- **Instagram llega hasta 720p** y no trae el texto del post (la tarjeta dice "Video sin
+  descripción"). Si la página de Instagram no se puede leer y el link no trae el usuario, el autor
+  queda como `@desconocido`.
 - **Sin probar en Instagram:** los links `/share/` (no hubo ninguno real para probar), iPhone y
   Android reales, y Safari. Sí se probó en Chrome de escritorio y en tamaño de celular.
 - **Límite de pedidos de tikwm (~1/s por IP).** Las funciones de Vercel salen por IPs
