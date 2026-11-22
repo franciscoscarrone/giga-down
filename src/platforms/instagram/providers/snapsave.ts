@@ -1,5 +1,5 @@
 import { AppError, toAppError } from "@/core/errors";
-import type { MediaAuthor, MediaItem, MediaResult, Provider } from "@/core/types";
+import type { MediaAuthor, MediaItem, MediaResult, Provider, Quality } from "@/core/types";
 import {
   positive,
   qualityForSize,
@@ -22,10 +22,10 @@ import { parseInstagramUrl, type InstagramRef } from "../detect";
  * - Cada medio es un `div.download-items` con la portada y un botón. Los dos links pasan por
  *   `d.rapidcdn.app?token=<JWT>`, y el JWT trae el link original del CDN de Instagram: se usa ese,
  *   así la descarga no depende de otro servicio más.
- * - El link del CDN trae en `efg` (base64) la resolución ("…C3.720.dash…") y la duración.
+ * - El link del CDN trae en `efg` (base64) el ancho ("…C3.720.dash…") y la duración.
  * - No trae ni el autor ni el texto del post: el autor sale del link o de la página de Instagram.
  * - Pide `Origin` y `Referer` de su propio formulario; sin eso, Cloudflare corta con un desafío.
- * - Es lento y variable: de 2 a más de 30 segundos. Por eso tiene su propio timeout.
+ * - Su demora varía mucho: de 1,5 a más de 30 segundos. Por eso tiene su propio timeout.
  */
 
 export const SNAPSAVE_ENDPOINT = "https://snapsave.app/action.php?lang=en";
@@ -40,8 +40,15 @@ const DOWNLOAD_SECTION =
 const ITEM_START = 'class="download-items"';
 const IMG_SRC = /<img\b[^>]*\bsrc="([^"]*)"/;
 const LINK_HREF = /<a\b[^>]*\bhref="([^"]*)"/;
-/** "xpv_progressive.INSTAGRAM.CLIPS.C3.720.dash_baseline_1_v1" → 720 (el lado corto). */
-const ENCODE_SIDE = /\.C\d+\.(\d{3,4})\./;
+/** "xpv_progressive.INSTAGRAM.CLIPS.C3.720.dash_baseline_1_v1" → 720: el ancho, no el lado corto. */
+const ENCODE_WIDTH = /\.C\d+\.(\d{3,4})\./;
+/** Algunas etiquetas lo dicen explícito: "…progressive_h264-basic-gen2_720p". */
+const ENCODE_LINES = /_(\d{3,4})p\b/;
+/**
+ * Instagram no sirve MP4 progresivos de más de 720p. Como la etiqueta trae el ancho, un video
+ * horizontal de 1280x720 dice "1280": se topea acá para no anunciarlo como 1080p.
+ */
+const MAX_PROGRESSIVE_SIDE = 720;
 
 /**
  * Desarma el script de Snapsave. Cada carácter del resultado es un número escrito con las letras
@@ -109,15 +116,22 @@ export function cdnUrlFromLink(link: string | undefined): string | undefined {
   }
 }
 
-/** Resolución y duración que el CDN de Instagram anota en el parámetro `efg` del link. */
-export function cdnVideoDetails(url: string): { side?: number; durationSeconds?: number } {
+/**
+ * Calidad y duración que el CDN de Instagram anota en el parámetro `efg` del link. Sin la altura,
+ * la calidad es aproximada: un video horizontal de 720 de ancho (405p) saldría como HD.
+ */
+export function cdnVideoDetails(url: string): { quality?: Quality; durationSeconds?: number } {
   try {
     const efg = new URL(url).searchParams.get("efg");
     if (!efg) return {};
     const info = JSON.parse(decodeBase64(efg)) as { vencode_tag?: unknown; duration_s?: unknown };
     const tag = typeof info.vencode_tag === "string" ? info.vencode_tag : "";
+    const side = positive(
+      Number(ENCODE_LINES.exec(tag)?.[1]) ||
+        Math.min(Number(ENCODE_WIDTH.exec(tag)?.[1]) || 0, MAX_PROGRESSIVE_SIDE),
+    );
     return {
-      side: positive(Number(ENCODE_SIDE.exec(tag)?.[1])),
+      quality: side ? qualityForSize(side, side) : undefined,
       durationSeconds: positive(Number(info.duration_s)),
     };
   } catch {
@@ -168,8 +182,7 @@ export function normalizeSnapsave(
 
   const items = videos.map((video, index): MediaItem => {
     const url = video.url!;
-    const { side, durationSeconds } = cdnVideoDetails(url);
-    const quality = side ? qualityForSize(side, side) : "sd";
+    const { quality = "sd", durationSeconds } = cdnVideoDetails(url);
     return {
       id: videos.length > 1 ? `${ref.code}-${index + 1}` : ref.code,
       coverUrl: video.coverUrl,

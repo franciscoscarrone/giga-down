@@ -441,12 +441,14 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
     ejecutarlo (`unpackSnapsave`).
   - Los links pasan por `d.rapidcdn.app?token=<JWT>`, y el JWT trae el link original del CDN de
     Instagram: se usa ese, así la descarga no depende de un servicio más.
-  - Gana portada y duración, y la calidad sale del parámetro `efg` del link del CDN. Pierde el
-    texto del post; el autor se busca aparte en la página pública de Instagram (mientras Snapsave
+  - Gana portada y duración, y la calidad sale del parámetro `efg` del link del CDN: trae el
+    ancho del MP4 ("…C3.720…" en un vertical de 720x1280, "…C3.1280…" en un horizontal de
+    1280x720), así que se topea en 720p, el máximo que sirve Instagram. Pierde el texto del post; el autor se busca aparte en la página pública de Instagram (mientras Snapsave
     responde) o se toma del link si lo trae (`instagram.com/usuario/reel/…`).
   - Se identifica como `GigaDown/1.0`, pero manda el `Origin` y el `Referer` de su formulario: sin
     eso, Cloudflare corta con un desafío.
-  - Tarda de 2 a más de 30 s, así que tiene su propio timeout (45 s, `Provider.timeoutMs`) y la app
+  - Su demora varía mucho: desde Vercel respondió en 1,5 a 7 s, pero desde otra conexión, el mismo
+    día, tardó hasta 35 s. Por eso tiene su propio timeout (45 s, `Provider.timeoutMs`) y la app
     avisa si la búsqueda se demora.
   - El 404 de vxinstagram cuenta como falla del servicio, no como "no existe": lo devuelve ante
     cualquier problema. El veredicto lo da Snapsave.
@@ -482,17 +484,20 @@ Lo que no estaba definido de entrada y decidí durante el desarrollo:
   están caídas o piden firmas). Si se cae, la app muestra "El servicio de descarga falló". La salida
   robusta es una API paga (con la clave en Vercel); autohospedar vxinstagram no alcanza, porque
   también depende de Snapsave.
-- **Instagram es lento.** Snapsave tardó de 2 a 35 s (mediana de 12 s) el 22/11/2026; a veces pasa
-  los 45 s y da "El servicio tardó demasiado". Un post que no existe también tarda en fallar.
+- **Instagram puede ser lento.** En producción, el 22/11/2026, 20 de 20 reels nuevos resolvieron en
+  1,5 a 7 s (mediana de 3 s). Ese mismo día, desde una conexión de casa, Snapsave tardó de 2 a 35 s
+  (mediana de 12 s): si un día anda así, algunos pedidos pasan los 45 s y dan "El servicio tardó
+  demasiado". Un post que no existe también tarda en fallar.
 - **Qué no baja de Instagram.** Con Snapsave directo, el 22/11/2026, sobre 27 posts públicos
-  (reels, álbumes y fotos): 23 resolvieron al primer intento, 2 al reintentar, 1 pasó los 40 s y un
-  reel de 2022 vino siempre sin link del video. Snapsave responde "Unable to connect to Instagram
+  (reels, álbumes y fotos) pedidos desde una conexión de casa: 23 resolvieron al primer intento, 2
+  al reintentar, 1 pasó los 40 s y un reel de 2022 vino siempre sin link del video. Snapsave responde "Unable to connect to Instagram
   server" tanto para posts que no existen como para privados, y la app lo muestra como "No
   encontramos ese video". Tampoco bajan las cuentas privadas, el contenido con restricción de edad
   (requiere sesión) ni las historias (el link se rechaza de entrada).
 - **Algunos videos de Instagram vienen sin sonido:** 3 de 109 revisados no traían pista de audio, y
   el servicio no ofrece otro archivo. La app no lo avisa antes de bajar.
-- **Instagram llega hasta 720p** y no trae el texto del post (la tarjeta dice "Video sin
+- **Instagram llega hasta 720p**, y la calidad que muestra la app es aproximada: un horizontal de
+  720 de ancho (405p) aparecería como HD. Tampoco trae el texto del post (la tarjeta dice "Video sin
   descripción"). Si la página de Instagram no se puede leer y el link no trae el usuario, el autor
   queda como `@desconocido`.
 - **Sin probar en Instagram:** los links `/share/` (no hubo ninguno real para probar), iPhone y
